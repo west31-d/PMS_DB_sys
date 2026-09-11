@@ -1,0 +1,2 @@
+-- RESERVATION_ROOM INITIAL DATA
+-- 원본 data-only dump 기준 현재 초기 데이터가 없습니다.
