@@ -1,0 +1,22 @@
+# Node
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Supabase production data
+supabase/seed.sql
+
+# Supabase local temporary files
+supabase/.temp/
+supabase/.branches/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
