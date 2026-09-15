@@ -1,0 +1,2 @@
+-- RATE_TYPE INITIAL DATA
+-- 등록할 초기 데이터가 없습니다.
