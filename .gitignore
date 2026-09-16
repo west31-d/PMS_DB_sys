@@ -20,3 +20,11 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+# Web build
+dist/
+*.tsbuildinfo
+
+
+# Browser verification
+test-results/
+playwright-report/

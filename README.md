@@ -1,2 +1,78 @@
-# PMS_DB_sys
+# ThreeSeven Hotel PMS
+
+호텔 프론트용 React + TypeScript + Vite 웹 UI와 기존 Supabase SQL을 함께 관리합니다.
+
+## 실행
+
+```sh
+npm install
+npm run dev
+```
+
+브라우저에서 http://127.0.0.1:5173 을 엽니다. 환경변수가 없으면 **데모 모드**로 실행됩니다.
+데모의 고객·예약·결제·객실은 모두 가상 데이터이며 실제 DB와 무관합니다.
+
+```sh
+npm run build
+npm test
+npm run preview
+```
+
+## Supabase 연결
+
+1. `.env.example`을 `.env.local`로 복사합니다.
+2. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`에 프로젝트 URL과 publishable/anon 키를 입력합니다.
+3. 개발 서버를 재시작하고 헤더의 계정 버튼에서 기존 Supabase Auth 직원 계정으로 로그인합니다.
+4. 해당 직원에게 호텔별 SELECT 권한과 RLS 정책이 설정되어 있어야 합니다. 이 웹 구현은 정책·권한·DB를 변경하지 않습니다.
+
+**service_role 키나 DB 비밀번호를 VITE\_ 환경변수에 넣지 마세요.** 브라우저에 공개됩니다.
+RLS가 모든 행을 숨기면 빈 목록이 표시되며, 오류는 화면에 표시됩니다. 실제 데이터 오류를 샘플 데이터로 대체하지 않습니다.
+초기 구현은 직원이 조회할 수 있는 12개 테이블을 1,000행씩 페이지 조회하여 클라이언트에서 결합합니다.
+운영 데이터가 커지면 서버 측 검색·페이지 조회와 호텔별 조회 최적화가 필요합니다.
+UI의 호텔 선택은 보안 경계가 아니므로 실제 호텔 접근 제한은 반드시 RLS로 적용해야 합니다.
+
+## 구현 범위
+
+- 고정 Sidebar, Accordion 메뉴, 접기, 작은 화면의 메뉴 오버레이
+- Top Header 예약 검색, 한국 날짜, 계정 로그인·로그아웃
+- 익스프레스 KPI, 입·퇴실 예정 목록, 현재 객실 상태
+- 예약/OTA/여행사 목록: 검색, 필터, 정렬, 페이지 이동
+- 예약 상세 Drawer: 객실 요금, 예약번호, 부대 이용내역, 결제 조회
+- 사용 가능 객실·청소표·고장 객실 조회
+- 개발자 페이지: 테이블 관계 목록, Source, 작업 현황
+
+HashRouter를 사용하므로 URL은 `/#/express/dashboard` 형태입니다. 새로고침 시 서버의 SPA fallback 설정 없이 동작합니다.
+전체 메뉴 경로는 `src/navigation.ts`에서 관리합니다. 기존 웹 Route는 없었으므로 새 경로만 추가했습니다.
+
+## 현재 조회 전용 / 미구현
+
+예약 등록·수정·체크인·체크아웃·고장 등록·결제 입력은 아직 제공하지 않습니다.
+실입실/실퇴실 시각, 노쇼 상태, 등록 카드, 일마감, 알림, PT, Feedback은 준비 중 화면으로 구분합니다.
+`rate_type`은 있지만 `reservation_room.rate_type_id`는 현재 SQL에 없습니다. 상세의 요금타입은 연결 준비 중으로 표시하며 금액은 기존 `rate_amount`를 읽습니다.
+기존 `rate_amount`의 박당/전체 숙박 기준이 확정되지 않았으므로 박수 곱셈이나 미수금 계산은 하지 않습니다.
+후불도 실제 수납 완료로 간주하지 않습니다.
+입퇴실 예정은 선택 날짜 및 현재 예약 상태 기준이며, 재실·정비상태는 현재 값입니다. 과거 시점의 상태를 복원하지 않습니다.
+사용 가능 객실은 정비 완료 공실에서 해당 날짜의 배정 예약을 제외한 값이며 미배정 예약은 차감하지 않습니다.
+원격 DB 연결/권한 검증과 직원 업무 흐름 확인 후 운영 배포해야 합니다.
+
+## 구조
+
+- `src/components/layout`: Sidebar, TopHeader
+- `src/components/table`: ReservationTable
+- `src/components/reservation`: ReservationDrawer
+- `src/pages`: Dashboard, Rooms, Development
+- `src/lib`: DB 타입, Supabase 조회, 데모 데이터, 운영 계산 및 테스트
+- `supabase/`: 기존 설정·마이그레이션·SQL (UI 작업으로 변경하지 않음)
+
+## 기존 프로젝트 링크
+
 https://app.notion.com/p/TSH_PMS-project-1b4cc13e79b58392bdf3014776de3dd6
+
+## 브라우저 검증
+
+Chrome이 설치된 환경에서 `npm run test:ui`를 실행합니다. 테스트는 5174 포트에서 별도 데모 서버를 시작하고 종료합니다.
+전체 메뉴, 검색·상태 필터·정렬·상세 패널, 390/800/1024/1440/1920px 레이아웃을 검증합니다.
+스크린샷과 실패 시 trace는 Git에서 제외된 `test-results/`에 저장됩니다.
+`npm run format`으로 웹 코드만 정리할 수 있습니다.
+
+구현 내역과 다음 작업은 [UI 작업 기록](docs/UI_HANDOFF.md)을 참고하세요.

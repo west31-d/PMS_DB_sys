@@ -1,0 +1,479 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import type { Session } from "@supabase/supabase-js";
+import { CalendarDays, RefreshCw, X, LogIn } from "lucide-react";
+import { Sidebar } from "./components/layout/Sidebar";
+import { TopHeader } from "./components/layout/TopHeader";
+import { PageHeader, EmptyState } from "./components/ui";
+import { ReservationTable } from "./components/table/ReservationTable";
+import { ReservationDrawer } from "./components/reservation/ReservationDrawer";
+import { Dashboard } from "./pages/Dashboard";
+import { Rooms } from "./pages/Rooms";
+import { Development } from "./pages/Development";
+import { pageInfo } from "./navigation";
+import { demoData } from "./lib/demo";
+import { hotelDate, operationalRows, reservationRows } from "./lib/domain";
+import { loadDataset, supabase } from "./lib/supabase";
+import type { Dataset, ReservationRow } from "./lib/types";
+
+function AccountDialog({
+  open,
+  onClose,
+  session,
+}: {
+  open: boolean;
+  onClose: () => void;
+  session: Session | null;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (open) ref.current?.showModal();
+    else ref.current?.close();
+  }, [open]);
+  return (
+    <dialog
+      aria-label="계정"
+      className="account-dialog"
+      ref={ref}
+      onCancel={onClose}
+    >
+      <div className="section-header">
+        <h2>{session ? "내 계정" : "Supabase 로그인"}</h2>
+        <button
+          className="icon-button"
+          aria-label="계정 창 닫기"
+          onClick={onClose}
+        >
+          <X size={20} />
+        </button>
+      </div>
+      {!supabase ? (
+        <p>
+          현재 데모 모드입니다. 실제 연결 방법은 README의 환경변수 설정을
+          참고하세요.
+        </p>
+      ) : session ? (
+        <>
+          <p>{session.user.email}</p>
+          <button
+            className="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const { error } = await supabase!.auth.signOut();
+                if (error) throw error;
+                onClose();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : "로그아웃 실패");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            로그아웃
+          </button>
+        </>
+      ) : (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            setError("");
+            try {
+              const { error } = await supabase!.auth.signInWithPassword({
+                email,
+                password,
+              });
+              if (error) throw error;
+              setPassword("");
+              onClose();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "로그인 실패");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <p className="muted">등록된 직원 계정으로 로그인하세요.</p>
+          <label>
+            이메일
+            <input
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+          <label>
+            비밀번호
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button className="button primary full" disabled={busy}>
+            {busy ? "로그인 중…" : "로그인"}
+          </button>
+        </form>
+      )}
+      {error && (
+        <p role="alert" className="error-text">
+          {error}
+        </p>
+      )}
+    </dialog>
+  );
+}
+const pending: Record<string, string> = {
+  "checked-in":
+    "실 입실 기록 기능을 준비하고 있습니다. 입실 예정 목록에서 예약을 확인하세요.",
+  "checked-out":
+    "실 퇴실 기록 기능을 준비하고 있습니다. 퇴실 예정 목록에서 예약을 확인하세요.",
+  "no-show": "노쇼 관리 기능을 준비하고 있습니다.",
+  cards: "등록 카드 양식과 출력 기능은 준비 중입니다.",
+  closing:
+    "일마감 기능을 준비하고 있습니다. 폴리오에서 예약별 이용·결제 내역을 확인하세요.",
+};
+function Workspace({
+  data,
+  propertyId,
+  day,
+  onSelect,
+}: {
+  data: Dataset;
+  propertyId: number;
+  day: string;
+  onSelect: (r: ReservationRow) => void;
+}) {
+  const location = useLocation(),
+    info = pageInfo(location.pathname),
+    rows = reservationRows(data, propertyId),
+    q = new URLSearchParams(location.search).get("q") ?? "";
+  if (location.pathname.startsWith("/development/"))
+    return <Development id={info.id} />;
+  if (info.id === "dashboard" || info.id === "overview")
+    return (
+      <Dashboard
+        data={data}
+        rows={rows}
+        propertyId={propertyId}
+        day={day}
+        onSelect={onSelect}
+      />
+    );
+  if (["available", "cleaning", "out-of-order"].includes(info.id))
+    return (
+      <Rooms
+        key={info.id}
+        data={data}
+        propertyId={propertyId}
+        day={day}
+        mode={info.id}
+      />
+    );
+  if (pending[info.id])
+    return (
+      <section className="panel">
+        <EmptyState title="기능 준비 중" description={pending[info.id]} />
+        <Link className="button" to="/booking/all">
+          예약 목록으로 이동
+        </Link>
+      </section>
+    );
+  if (info.id === "not-found")
+    return <EmptyState title="페이지를 찾을 수 없습니다" />;
+  return (
+    <>
+      {info.id === "folio" && (
+        <div className="info-banner">
+          예약을 선택하면 부대 이용내역과 결제 내역을 조회할 수 있습니다.
+          정산·결제 등록은 준비 중입니다.
+        </div>
+      )}
+      <ReservationTable
+        key={location.pathname + q + propertyId}
+        rows={operationalRows(rows, info.id, day)}
+        onSelect={onSelect}
+        initialSearch={q}
+      />
+    </>
+  );
+}
+export default function App() {
+  const location = useLocation(),
+    info = pageInfo(location.pathname);
+  const [collapsed, setCollapsed] = useState(false),
+    [mobile, setMobile] = useState(false),
+    [account, setAccount] = useState(false);
+  const [day, setDay] = useState(hotelDate()),
+    [mode, setMode] = useState<"demo" | "live">(supabase ? "live" : "demo"),
+    [session, setSession] = useState<Session | null>(null);
+  const [data, setData] = useState<Dataset | null>(supabase ? null : demoData),
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(false),
+    [revision, setRevision] = useState(0),
+    [propertyId, setPropertyId] = useState(1),
+    [selected, setSelected] = useState<ReservationRow | null>(null);
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (active) {
+        setSession(data.session);
+        if (error) setError(error.message);
+      }
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) =>
+      setSession(next),
+    );
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  useEffect(() => {
+    setSelected(null);
+    setError("");
+    if (mode === "demo") {
+      setData(demoData);
+      setLoading(false);
+      setPropertyId(1);
+      return;
+    }
+    setData(null);
+    if (!session) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    loadDataset()
+      .then((next) => {
+        if (!cancelled) {
+          setData(next);
+          setPropertyId((old) =>
+            next.properties.some((p) => p.property_id === old)
+              ? old
+              : (next.properties[0]?.property_id ?? 0),
+          );
+        }
+      })
+      .catch((e) => {
+        if (!cancelled)
+          setError(
+            e instanceof Error ? e.message : "데이터를 불러오지 못했습니다.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, session, revision]);
+  useEffect(() => {
+    setSelected(null);
+    setMobile(false);
+  }, [location.pathname, propertyId]);
+  const known = info.id !== "not-found";
+  return (
+    <div
+      className={
+        "app " +
+        (collapsed ? "is-collapsed " : "") +
+        (mobile ? "mobile-open" : "")
+      }
+    >
+      <Sidebar
+        collapsed={collapsed}
+        onToggle={() => {
+          if (window.matchMedia("(max-width: 960px)").matches) setMobile(false);
+          else setCollapsed(!collapsed);
+        }}
+        onNavigate={() => setMobile(false)}
+      />
+      {mobile && (
+        <button
+          className="sidebar-scrim"
+          aria-label="메뉴 닫기"
+          onClick={() => setMobile(false)}
+        />
+      )}
+      <div className="workspace">
+        <TopHeader
+          group={info.group}
+          title={info.title}
+          today={hotelDate()}
+          email={session?.user.email ?? ""}
+          onMenu={() => {
+            setCollapsed(false);
+            setMobile(true);
+          }}
+          onAccount={() => setAccount(true)}
+        />
+        <div
+          className={"connection-strip " + (mode === "demo" ? "demo" : "live")}
+        >
+          <span>
+            <i />
+            {mode === "demo"
+              ? "데모 모드 · 화면의 모든 데이터는 샘플입니다."
+              : "Supabase · 직원 계정 조회 전용"}
+          </span>
+          <div>
+            {data && data.properties.length > 0 && (
+              <select
+                aria-label="호텔 선택"
+                value={propertyId}
+                onChange={(e) => setPropertyId(Number(e.target.value))}
+              >
+                {data.properties.map((p) => (
+                  <option key={p.property_id} value={p.property_id}>
+                    {p.property_name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {supabase && (
+              <button
+                onClick={() => setMode(mode === "demo" ? "live" : "demo")}
+              >
+                {mode === "demo" ? "실제 데이터로 전환" : "데모 보기"}
+              </button>
+            )}
+          </div>
+        </div>
+        <main id="main-content">
+          <PageHeader
+            title={info.title}
+            description={
+              info.id === "dashboard"
+                ? "오늘의 운영 현황을 확인하고, 필요한 업무를 시작하세요."
+                : info.id === "in-house"
+                  ? "현재 재실 상태인 예약을 확인합니다."
+                  : info.group + " 업무를 한곳에서 확인하세요."
+            }
+          >
+            {[
+              "dashboard",
+              "overview",
+              "arrivals",
+              "departures",
+              "available",
+            ].includes(info.id) && (
+              <label className="date-picker">
+                <CalendarDays size={16} />
+                <span className="sr-only">조회 기준일</span>
+                <input
+                  aria-label="조회 기준일"
+                  type="date"
+                  value={day}
+                  onChange={(e) => {
+                    if (e.target.value) setDay(e.target.value);
+                  }}
+                />
+              </label>
+            )}
+            <button
+              className="button"
+              disabled={loading}
+              onClick={() => setRevision((r) => r + 1)}
+            >
+              <RefreshCw size={15} className={loading ? "spin" : ""} />
+              새로고침
+            </button>
+          </PageHeader>
+          {error ? (
+            <div className="error-panel" role="alert">
+              <h2>데이터를 불러오지 못했습니다</h2>
+              <p>{error}</p>
+              <p>
+                로그인 계정의 테이블 조회 권한과 RLS 정책을 확인하세요. 샘플
+                데이터로 자동 대체하지 않습니다.
+              </p>
+              <button
+                className="button"
+                onClick={() => setRevision((r) => r + 1)}
+              >
+                다시 시도
+              </button>
+            </div>
+          ) : loading ? (
+            <div className="loading" role="status">
+              <RefreshCw className="spin" /> 운영 데이터를 불러오는 중입니다…
+            </div>
+          ) : mode === "live" && !session ? (
+            <section className="panel">
+              <EmptyState
+                title="직원 계정으로 로그인하세요"
+                description="호텔 운영 데이터는 로그인 후 조회할 수 있습니다."
+              />
+              <button
+                className="button primary"
+                onClick={() => setAccount(true)}
+              >
+                <LogIn size={16} />
+                로그인
+              </button>
+            </section>
+          ) : data && !data.properties.length ? (
+            <EmptyState
+              title="조회 가능한 호텔이 없습니다"
+              description="호텔 데이터와 계정의 조회 권한을 확인하세요."
+            />
+          ) : data ? (
+            <Routes>
+              <Route
+                path="/"
+                element={<Navigate to="/express/dashboard" replace />}
+              />
+              <Route
+                path="*"
+                element={
+                  known ? (
+                    <Workspace
+                      data={data}
+                      propertyId={propertyId}
+                      day={day}
+                      onSelect={setSelected}
+                    />
+                  ) : (
+                    <EmptyState
+                      title="페이지를 찾을 수 없습니다"
+                      description="왼쪽 메뉴에서 이동해 주세요."
+                    />
+                  )
+                }
+              />
+            </Routes>
+          ) : null}
+          <footer className="page-footer">
+            <span>THREESEVEN PMS</span>
+            <span>조회 기준: 한국 시간 (KST) · 조회 전용</span>
+          </footer>
+        </main>
+      </div>
+      {data && (
+        <ReservationDrawer
+          row={selected}
+          data={data}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      <AccountDialog
+        open={account}
+        session={session}
+        onClose={() => setAccount(false)}
+      />
+    </div>
+  );
+}
