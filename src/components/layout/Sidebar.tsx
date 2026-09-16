@@ -35,12 +35,7 @@ export function Sidebar({
       <div className="nav-scroll">
         <div className="nav-label">WORKSPACE</div>
         {groups.map((group) => (
-          <section
-            key={group.id}
-            className={
-              group.id === "development" ? "nav-group development" : "nav-group"
-            }
-          >
+          <section key={group.id} className="nav-group">
             <button
               className={
                 "group-button " +
@@ -48,7 +43,8 @@ export function Sidebar({
                   ? "group-active"
                   : "")
               }
-              aria-expanded={open.includes(group.id)}
+              aria-expanded={!collapsed && open.includes(group.id)}
+              aria-controls={"submenu-" + group.id}
               title={group.label}
               onClick={() => {
                 if (collapsed) onToggle();
@@ -66,22 +62,31 @@ export function Sidebar({
                 className={open.includes(group.id) ? "chevron open" : "chevron"}
               />
             </button>
-            {!collapsed && open.includes(group.id) && (
-              <div className="nav-items">
-                {group.items.map(([id, label]) => (
-                  <NavLink
-                    key={id}
-                    to={"/" + group.id + "/" + id}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      isActive ? "nav-item active" : "nav-item"
-                    }
-                  >
-                    {label}
-                  </NavLink>
-                ))}
+            <div
+              id={"submenu-" + group.id}
+              className={
+                "submenu " +
+                (!collapsed && open.includes(group.id) ? "is-open" : "")
+              }
+              inert={collapsed || !open.includes(group.id)}
+            >
+              <div className="submenu-clip">
+                <div className="nav-items">
+                  {group.items.map(([id, label]) => (
+                    <NavLink
+                      key={id}
+                      to={"/" + group.id + "/" + id}
+                      onClick={onNavigate}
+                      className={({ isActive }) =>
+                        isActive ? "nav-item active" : "nav-item"
+                      }
+                    >
+                      {label}
+                    </NavLink>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </section>
         ))}
       </div>

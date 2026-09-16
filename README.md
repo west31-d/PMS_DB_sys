@@ -39,7 +39,6 @@ UI의 호텔 선택은 보안 경계가 아니므로 실제 호텔 접근 제한
 - 예약/OTA/여행사 목록: 검색, 필터, 정렬, 페이지 이동
 - 예약 상세 Drawer: 객실 요금, 예약번호, 부대 이용내역, 결제 조회
 - 사용 가능 객실·청소표·고장 객실 조회
-- 개발자 페이지: 테이블 관계 목록, Source, 작업 현황
 
 HashRouter를 사용하므로 URL은 `/#/express/dashboard` 형태입니다. 새로고침 시 서버의 SPA fallback 설정 없이 동작합니다.
 전체 메뉴 경로는 `src/navigation.ts`에서 관리합니다. 기존 웹 Route는 없었으므로 새 경로만 추가했습니다.
@@ -47,7 +46,7 @@ HashRouter를 사용하므로 URL은 `/#/express/dashboard` 형태입니다. 새
 ## 현재 조회 전용 / 미구현
 
 예약 등록·수정·체크인·체크아웃·고장 등록·결제 입력은 아직 제공하지 않습니다.
-실입실/실퇴실 시각, 노쇼 상태, 등록 카드, 일마감, 알림, PT, Feedback은 준비 중 화면으로 구분합니다.
+실입실/실퇴실 시각, 노쇼 상태, 등록 카드, 일마감, 알림은 준비 중 화면으로 구분합니다.
 `rate_type`은 있지만 `reservation_room.rate_type_id`는 현재 SQL에 없습니다. 상세의 요금타입은 연결 준비 중으로 표시하며 금액은 기존 `rate_amount`를 읽습니다.
 기존 `rate_amount`의 박당/전체 숙박 기준이 확정되지 않았으므로 박수 곱셈이나 미수금 계산은 하지 않습니다.
 후불도 실제 수납 완료로 간주하지 않습니다.
@@ -60,7 +59,7 @@ HashRouter를 사용하므로 URL은 `/#/express/dashboard` 형태입니다. 새
 - `src/components/layout`: Sidebar, TopHeader
 - `src/components/table`: ReservationTable
 - `src/components/reservation`: ReservationDrawer
-- `src/pages`: Dashboard, Rooms, Development
+- `src/pages`: Dashboard, Rooms, RoomTimeline
 - `src/lib`: DB 타입, Supabase 조회, 데모 데이터, 운영 계산 및 테스트
 - `supabase/`: 기존 설정·마이그레이션·SQL (UI 작업으로 변경하지 않음)
 

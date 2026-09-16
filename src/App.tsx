@@ -11,7 +11,6 @@ import { Dashboard } from "./pages/Dashboard";
 import { RoomTimeline } from "./pages/RoomTimeline";
 import "./timeline.css";
 import { Rooms } from "./pages/Rooms";
-import { Development } from "./pages/Development";
 import { pageInfo } from "./navigation";
 import { demoData } from "./lib/demo";
 import { loadRoomCatalog } from "./lib/roomCatalog";
@@ -163,8 +162,6 @@ function Workspace({
     info = pageInfo(location.pathname),
     rows = reservationRows(data, propertyId),
     q = new URLSearchParams(location.search).get("q") ?? "";
-  if (location.pathname.startsWith("/development/"))
-    return <Development id={info.id} />;
   if (info.id === "dashboard")
     return (
       <RoomTimeline
@@ -332,13 +329,13 @@ export default function App() {
         }}
         onNavigate={() => setMobile(false)}
       />
-      {mobile && (
-        <button
-          className="sidebar-scrim"
-          aria-label="메뉴 닫기"
-          onClick={() => setMobile(false)}
-        />
-      )}
+      <button
+        className="sidebar-scrim"
+        tabIndex={mobile ? 0 : -1}
+        aria-hidden={!mobile}
+        aria-label="메뉴 닫기"
+        onClick={() => setMobile(false)}
+      />
       <div className="workspace">
         <TopHeader
           group={info.group}

@@ -3,7 +3,6 @@ import {
   CalendarDays,
   BedDouble,
   ReceiptText,
-  Code2,
 } from "lucide-react";
 export const groups = [
   {
@@ -50,18 +49,6 @@ export const groups = [
     items: [
       ["closing", "일마감"],
       ["folio", "폴리오"],
-    ],
-  },
-  {
-    id: "development",
-    label: "개발자 페이지",
-    icon: Code2,
-    items: [
-      ["pt", "PT"],
-      ["schema", "DB_ERD & Table List"],
-      ["source", "Source"],
-      ["wbs", "WBS"],
-      ["feedback", "Feedback"],
     ],
   },
 ];

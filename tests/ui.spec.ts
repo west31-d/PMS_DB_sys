@@ -71,9 +71,9 @@ test("모든 메뉴 경로를 직접 열고 새로고침할 수 있다", async (
   }
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Feedback", exact: true }),
+    page.getByRole("heading", { name: "폴리오", exact: true }),
   ).toBeVisible();
-  await page.goto("/#/invalid");
+  await page.goto("/#/development/schema");
   await expect(
     page.getByRole("heading", { name: "페이지를 찾을 수 없습니다" }),
   ).toBeVisible();
@@ -103,7 +103,7 @@ test("접기와 노트북/모바일 메뉴 이동", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "청소표", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".sidebar-scrim")).toHaveCount(0);
+  await expect(page.locator(".sidebar-scrim")).not.toBeVisible();
   await page.screenshot({
     path: "test-results/rooms-mobile.png",
     fullPage: true,
