@@ -3,15 +3,27 @@ import type { Dataset } from "./types";
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 export const supabase = url && key ? createClient(url, key) : null;
+export interface CheckInQuery {
+  propertyId: number;
+  from: string;
+  to: string;
+}
 async function readRows<T>(
   table: string,
   columns: string,
   order: string,
+  checkIn?: CheckInQuery,
 ): Promise<T[]> {
   if (!supabase) throw new Error("Supabase 연결 설정이 없습니다.");
   const result: T[] = [];
   for (let from = 0; ; from += 1000) {
     let query = supabase.from(table).select(columns);
+    if (checkIn)
+      query = query
+        .eq("property_id", checkIn.propertyId)
+        .eq("status", "재실")
+        .gte("check_in", checkIn.from)
+        .lte("check_in", checkIn.to);
     for (const column of order.split(",")) query = query.order(column);
     const { data, error } = await query.range(from, from + 999);
     if (error) throw new Error(table + ": " + error.message);
@@ -20,7 +32,7 @@ async function readRows<T>(
   }
   return result;
 }
-export async function loadDataset(): Promise<Dataset> {
+export async function loadDataset(checkIn?: CheckInQuery): Promise<Dataset> {
   const [
     properties,
     customers,
@@ -64,6 +76,7 @@ export async function loadDataset(): Promise<Dataset> {
       "reservation",
       "reservation_id,property_id,customer_id,booking_partner_id,check_in,check_out,status,note",
       "reservation_id",
+      checkIn,
     ),
     readRows<Dataset["reservationRooms"][number]>(
       "reservation_room",

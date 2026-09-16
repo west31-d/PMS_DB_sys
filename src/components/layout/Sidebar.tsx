@@ -23,8 +23,16 @@ export function Sidebar({
     setOpen((old) => (old.includes(active) ? old : [...old, active]));
   }, [pathname]);
   return (
-    <aside className={"sidebar " + (collapsed ? "collapsed" : "")}>
-      <NavLink to="/express/dashboard" className="brand" title="ThreeSeven PMS">
+    <aside
+      id="app-sidebar"
+      className={"sidebar " + (collapsed ? "collapsed" : "")}
+    >
+      <NavLink
+        to="/express/dashboard"
+        className="brand"
+        title="ThreeSeven PMS"
+        onClick={onNavigate}
+      >
         <span className="brand-icon">
           <Hotel size={23} />
         </span>

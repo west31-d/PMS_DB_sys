@@ -177,11 +177,6 @@ export function Dashboard({
             <Link to="/accounting/folio">
               폴리오 조회 <ArrowRight size={15} />
             </Link>
-            <p>
-              입·퇴실 예정은 선택 날짜 기준,
-              <br />
-              객실 상태는 현재 등록 상태입니다.
-            </p>
           </section>
         </aside>
       </div>

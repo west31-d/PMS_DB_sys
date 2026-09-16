@@ -349,17 +349,12 @@ export function RoomTimeline({
         <span>
           <BedDouble size={14} /> {visible.length}실 · {days}일 보기
         </span>
-        <span>
-          체크아웃 당일 제외 · 취소 예약 제외 · 층은 객실번호 기준 · 상태는 현재
-          기준
-        </span>
       </div>
       {unassigned.length > 0 && !floor && (
         <div className="unassigned">
           <div>
             <strong>객실 미배정</strong>
             <span>{unassigned.length}실</span>
-            <small>객실 배정 전인 예약입니다.</small>
           </div>
           <div className="unassigned-list">
             {unassigned.map((x) => (

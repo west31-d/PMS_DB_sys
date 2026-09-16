@@ -136,9 +136,6 @@ export function ReservationDrawer({
             <h3>메모</h3>
             <p className="note">{row.note || "등록된 메모가 없습니다."}</p>
           </div>
-          <footer>
-            현재 조회 전용입니다. 체크인·수정 기능은 준비 중입니다.
-          </footer>
         </div>
       )}
     </dialog>

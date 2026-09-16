@@ -7,6 +7,7 @@ export function TopHeader({
   today,
   email,
   onMenu,
+  menuExpanded,
   onAccount,
 }: {
   group: string;
@@ -14,6 +15,7 @@ export function TopHeader({
   today: string;
   email: string;
   onMenu: () => void;
+  menuExpanded: boolean;
   onAccount: () => void;
 }) {
   const [search, setSearch] = useState("");
@@ -23,7 +25,9 @@ export function TopHeader({
     <header className="top-header">
       <button
         className="icon-button mobile-menu"
-        aria-label="메뉴 열기"
+        aria-label={menuExpanded ? "메뉴 닫기" : "메뉴 열기"}
+        aria-expanded={menuExpanded}
+        aria-controls="app-sidebar"
         onClick={onMenu}
       >
         <Menu size={20} />

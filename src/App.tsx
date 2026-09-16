@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { CalendarDays, RefreshCw, X, LogIn } from "lucide-react";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopHeader } from "./components/layout/TopHeader";
+import {
+  WorkspaceTabs,
+  useWorkspaceTabs,
+} from "./components/layout/WorkspaceTabs";
 import { PageHeader, EmptyState } from "./components/ui";
 import { ReservationTable } from "./components/table/ReservationTable";
 import { ReservationDrawer } from "./components/reservation/ReservationDrawer";
 import { Dashboard } from "./pages/Dashboard";
 import { RoomTimeline } from "./pages/RoomTimeline";
+import { CheckedIn } from "./pages/CheckedIn";
 import "./timeline.css";
 import { Rooms } from "./pages/Rooms";
 import { pageInfo } from "./navigation";
@@ -136,8 +141,6 @@ function AccountDialog({
   );
 }
 const pending: Record<string, string> = {
-  "checked-in":
-    "실 입실 기록 기능을 준비하고 있습니다. 입실 예정 목록에서 예약을 확인하세요.",
   "checked-out":
     "실 퇴실 기록 기능을 준비하고 있습니다. 퇴실 예정 목록에서 예약을 확인하세요.",
   "no-show": "노쇼 관리 기능을 준비하고 있습니다.",
@@ -146,22 +149,38 @@ const pending: Record<string, string> = {
     "일마감 기능을 준비하고 있습니다. 폴리오에서 예약별 이용·결제 내역을 확인하세요.",
 };
 function Workspace({
+  viewLocation,
+  active,
   data,
   propertyId,
   day,
   onDayChange,
+  live,
   onSelect,
 }: {
+  viewLocation: { pathname: string; search: string };
+  active: boolean;
   data: Dataset;
   propertyId: number;
   day: string;
   onDayChange: (day: string) => void;
+  live: boolean;
   onSelect: (r: ReservationRow) => void;
 }) {
-  const location = useLocation(),
+  const location = viewLocation,
     info = pageInfo(location.pathname),
     rows = reservationRows(data, propertyId),
     q = new URLSearchParams(location.search).get("q") ?? "";
+  if (info.id === "checked-in")
+    return (
+      <CheckedIn
+        key={propertyId}
+        data={data}
+        propertyId={propertyId}
+        live={live}
+        active={active}
+      />
+    );
   if (info.id === "dashboard")
     return (
       <RoomTimeline
@@ -207,12 +226,6 @@ function Workspace({
     return <EmptyState title="페이지를 찾을 수 없습니다" />;
   return (
     <>
-      {info.id === "folio" && (
-        <div className="info-banner">
-          예약을 선택하면 부대 이용내역과 결제 내역을 조회할 수 있습니다.
-          정산·결제 등록은 준비 중입니다.
-        </div>
-      )}
       <ReservationTable
         key={location.pathname + q + propertyId}
         rows={operationalRows(rows, info.id, day)}
@@ -223,13 +236,22 @@ function Workspace({
   );
 }
 export default function App() {
+  const { tabs, day, setDay, close, activate } = useWorkspaceTabs();
+  const [narrow, setNarrow] = useState(
+    () => window.matchMedia("(max-width: 960px)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 960px)");
+    const update = () => setNarrow(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   const location = useLocation(),
     info = pageInfo(location.pathname);
   const [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
     [account, setAccount] = useState(false);
-  const [day, setDay] = useState(hotelDate()),
-    [mode, setMode] = useState<"demo" | "live" | "snapshot">(
+  const [mode, setMode] = useState<"demo" | "live" | "snapshot">(
       import.meta.env.VITE_DEMO_MODE === "true"
         ? "demo"
         : supabase
@@ -237,7 +259,7 @@ export default function App() {
           : "snapshot",
     ),
     [session, setSession] = useState<Session | null>(null);
-  const [syncedAt, setSyncedAt] = useState("");
+
   const [data, setData] = useState<Dataset | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false),
@@ -280,7 +302,6 @@ export default function App() {
     const request =
       mode === "snapshot"
         ? loadRoomCatalog().then((snapshot) => {
-            if (!cancelled) setSyncedAt(snapshot.syncedAt);
             return snapshot.data;
           })
         : loadDataset();
@@ -315,6 +336,7 @@ export default function App() {
   const known = info.id !== "not-found";
   return (
     <div
+      data-mode={mode}
       className={
         "app " +
         (collapsed ? "is-collapsed " : "") +
@@ -327,7 +349,10 @@ export default function App() {
           if (window.matchMedia("(max-width: 960px)").matches) setMobile(false);
           else setCollapsed(!collapsed);
         }}
-        onNavigate={() => setMobile(false)}
+        onNavigate={() => {
+          setMobile(false);
+          setCollapsed(true);
+        }}
       />
       <button
         className="sidebar-scrim"
@@ -342,30 +367,24 @@ export default function App() {
           title={info.title}
           today={hotelDate()}
           email={session?.user.email ?? ""}
+          menuExpanded={narrow ? mobile : !collapsed}
           onMenu={() => {
-            setCollapsed(false);
-            setMobile(true);
+            if (narrow) {
+              setCollapsed(false);
+              setMobile((v) => !v);
+            } else setCollapsed((v) => !v);
           }}
           onAccount={() => setAccount(true)}
         />
-        <div
-          className={"connection-strip " + (mode === "demo" ? "demo" : "live")}
-        >
-          <span>
-            <i />
-            {mode === "demo"
-              ? "데모 모드 · 화면의 모든 데이터는 샘플입니다."
-              : mode === "snapshot"
-                ? "Supabase 객실·타입 · 동기화본" +
-                  (syncedAt
-                    ? " · " +
-                      new Date(syncedAt).toLocaleString("ko-KR", {
-                        timeZone: "Asia/Seoul",
-                      })
-                    : "")
-                : "Supabase · 직원 계정 조회 전용"}
-          </span>
-          <div>
+        <WorkspaceTabs
+          tabs={tabs}
+          activePath={location.pathname}
+          onActivate={activate}
+          onClose={close}
+        />
+
+        <main id="main-content">
+          <PageHeader title={info.title}>
             {data && data.properties.length > 0 && (
               <select
                 aria-label="호텔 선택"
@@ -379,26 +398,8 @@ export default function App() {
                 ))}
               </select>
             )}
-            {supabase && (
-              <button
-                onClick={() => setMode(mode === "demo" ? "live" : "demo")}
-              >
-                {mode === "demo" ? "실제 데이터로 전환" : "데모 보기"}
-              </button>
-            )}
-          </div>
-        </div>
-        <main id="main-content">
-          <PageHeader
-            title={info.title}
-            description={
-              info.id === "dashboard"
-                ? "객실별 체크인·체크아웃 일정과 배정 현황을 한눈에 확인하세요."
-                : info.id === "in-house"
-                  ? "현재 재실 상태인 예약을 확인합니다."
-                  : info.group + " 업무를 한곳에서 확인하세요."
-            }
-          >
+            {mode === "demo" && <span className="badge gray">데모</span>}
+            {supabase && <button className="button" onClick={()=>setMode(mode === "demo" ? "live" : "demo")}>{mode === "demo" ? "운영 화면" : "데모"}</button>}
             {[
               "dashboard",
               "overview",
@@ -428,12 +429,7 @@ export default function App() {
               새로고침
             </button>
           </PageHeader>
-          {mode === "snapshot" && data && (
-            <div className="info-banner">
-              Supabase에 등록된 실제 객실·타입입니다. 예약·결제 내역은 연결 준비
-              중이며, 샘플 예약은 표시하지 않습니다.
-            </div>
-          )}
+
           {error ? (
             <div className="error-panel" role="alert">
               <h2>데이터를 불러오지 못했습니다</h2>
@@ -473,36 +469,39 @@ export default function App() {
               description="호텔 데이터와 계정의 조회 권한을 확인하세요."
             />
           ) : data ? (
-            <Routes>
-              <Route
-                path="/"
-                element={<Navigate to="/express/dashboard" replace />}
-              />
-              <Route
-                path="*"
-                element={
-                  known ? (
-                    <Workspace
-                      data={data}
-                      propertyId={propertyId}
-                      day={day}
-                      onDayChange={setDay}
-                      onSelect={setSelected}
-                    />
-                  ) : (
-                    <EmptyState
-                      title="페이지를 찾을 수 없습니다"
-                      description="왼쪽 메뉴에서 이동해 주세요."
-                    />
-                  )
-                }
-              />
-            </Routes>
+            <>
+              {location.pathname === "/" && (
+                <Navigate to="/express/dashboard" replace />
+              )}
+              {tabs.map((tab) => (
+                <section
+                  key={tab.path + propertyId + mode + (session?.user.id ?? "")}
+                  id={"work-panel-" + tab.path}
+                  role="tabpanel"
+                  aria-labelledby={"work-tab-" + tab.path}
+                  hidden={tab.path !== location.pathname}
+                  className="work-panel"
+                >
+                  <Workspace
+                    viewLocation={{ pathname: tab.path, search: tab.search }}
+                    active={tab.path === location.pathname}
+                    data={data}
+                    propertyId={propertyId}
+                    day={tab.day}
+                    onDayChange={setDay}
+                    live={mode === "live"}
+                    onSelect={setSelected}
+                  />
+                </section>
+              ))}
+              {!known && location.pathname !== "/" && (
+                <EmptyState
+                  title="페이지를 찾을 수 없습니다"
+                  description="왼쪽 메뉴에서 이동해 주세요."
+                />
+              )}
+            </>
           ) : null}
-          <footer className="page-footer">
-            <span>THREESEVEN PMS</span>
-            <span>조회 기준: 한국 시간 (KST) · 조회 전용</span>
-          </footer>
         </main>
       </div>
       {data && (

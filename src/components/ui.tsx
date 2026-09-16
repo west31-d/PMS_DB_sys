@@ -23,18 +23,15 @@ export function StatusBadge({ status }: { status: string }) {
 }
 export function PageHeader({
   title,
-  description,
   children,
 }: {
   title: string;
-  description: string;
   children?: ReactNode;
 }) {
   return (
     <div className="page-header">
       <div>
         <h1>{title}</h1>
-        <p>{description}</p>
       </div>
       <div className="page-actions">{children}</div>
     </div>
@@ -42,7 +39,6 @@ export function PageHeader({
 }
 export function EmptyState({
   title = "조회 결과가 없습니다",
-  description = "검색어나 필터를 변경해 보세요.",
 }: {
   title?: string;
   description?: string;
@@ -51,7 +47,6 @@ export function EmptyState({
     <div className="empty">
       <Inbox size={30} />
       <strong>{title}</strong>
-      <p>{description}</p>
     </div>
   );
 }

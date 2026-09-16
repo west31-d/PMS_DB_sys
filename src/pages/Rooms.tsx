@@ -36,17 +36,6 @@ export function Rooms({
     );
   return (
     <>
-      {mode === "out-of-order" && (
-        <div className="info-banner">
-          고장 객실 조회 화면입니다. 고장 등록·해제 기능은 준비 중입니다.
-        </div>
-      )}
-      {mode === "available" && (
-        <div className="info-banner">
-          선택 날짜에 배정된 예약이 없는 정비 완료 공실입니다. 객실 미배정
-          예약은 차감되지 않으므로 판매 가능 수량과 다를 수 있습니다.
-        </div>
-      )}
       <div className="table-card">
         <div className="table-toolbar">
           <div className="filter-search">

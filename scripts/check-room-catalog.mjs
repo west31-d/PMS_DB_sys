@@ -14,7 +14,7 @@ try{
   const actual=await page.locator(".timeline-room").evaluateAll(nodes=>nodes.map(n=>({number:n.querySelector(".room-meta strong")?.textContent,type:n.querySelector(".room-meta > span:nth-child(3)")?.textContent})));
   assert.equal(actual.find(r=>r.number===room.room_number)?.type,catalog.roomTypes.find(t=>t.room_type_id===room.room_type_id)?.room_type_name);
  }
- assert.match(await page.locator(".connection-strip").innerText(),/동기화본/);
+ assert.equal(await page.locator(".app").getAttribute("data-mode"),"snapshot");
  mkdirSync("test-results",{recursive:true});
  await page.screenshot({path:"test-results/actual-rooms.png",fullPage:true});
  console.log("Verified all "+catalog.rooms.length+" room/type mappings from Supabase; no sample bookings.");
