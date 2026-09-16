@@ -28,3 +28,6 @@ dist/
 # Browser verification
 test-results/
 playwright-report/
+
+# Synced Supabase room catalog (local only)
+public/data/room-catalog.json

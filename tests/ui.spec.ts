@@ -11,7 +11,7 @@ test("대시보드, 검색, 상세 패널과 키보드 닫기", async ({ page })
   await expect(
     page.getByText("데모 모드 · 화면의 모든 데이터는 샘플입니다."),
   ).toBeVisible();
-  await expect(page.locator(".stat-card")).toHaveCount(6);
+  await expect(page.locator(".timeline-room")).toHaveCount(24);
   await page.screenshot({
     path: "test-results/dashboard-1440.png",
     fullPage: true,
@@ -121,8 +121,42 @@ test("빈 검색, 고장/정비 상태와 게스트 계정 안내", async ({ pag
   await page.getByRole("button", { name: "게스트" }).click();
   await expect(page.getByRole("dialog", { name: "계정" })).toBeVisible();
   await expect(
-    page.getByText("현재 데모 모드입니다.", { exact: false }),
+    page.getByText("현재 로그인 연결 전입니다.", { exact: false }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "계정" })).not.toBeVisible();
+});
+
+test("객실 현황표 기간·필터·예약 상세", async ({ page }) => {
+  await page.goto("/#/express/dashboard");
+  await expect(page.locator(".timeline-date")).toHaveCount(14);
+  await expect(page.locator(".booking-bar")).toHaveCount(5);
+  await expect(page.locator(".unassigned-list button")).toHaveCount(1);
+  await page.locator(".booking-bar").filter({ hasText: "Alex Morgan" }).click();
+  await expect(page.getByRole("dialog", { name: "예약 상세" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "1개월", exact: true }).click();
+  expect(await page.locator(".timeline-date").count()).toBeGreaterThanOrEqual(
+    28,
+  );
+  await page.getByRole("combobox", { name: "층 필터" }).selectOption("3F");
+  await expect(page.locator(".timeline-room")).toHaveCount(6);
+  await page
+    .getByRole("combobox", { name: "현황표 객실타입" })
+    .selectOption("1");
+  await expect(page.locator(".timeline-room")).toHaveCount(2);
+  await page.getByRole("combobox", { name: "층 필터" }).selectOption("");
+  await page
+    .getByRole("combobox", { name: "현황표 객실타입" })
+    .selectOption("");
+  await page.getByRole("textbox", { name: "현황표 검색" }).fill("Alex");
+  await expect(page.locator(".timeline-room")).toHaveCount(1);
+  await page.getByRole("textbox", { name: "현황표 검색" }).fill("");
+  await page.getByLabel("조회 기준일", { exact: true }).fill("2000-01-01");
+  await expect(page.locator(".booking-bar")).toHaveCount(0);
+  await expect(page.locator(".timeline-room")).toHaveCount(24);
+  await page.getByRole("button", { name: "다음 기간", exact: true }).click();
+  await expect(page.getByLabel("조회 기준일", { exact: true })).toHaveValue(
+    "2000-02-01",
+  );
 });

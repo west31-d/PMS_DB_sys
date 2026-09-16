@@ -8,10 +8,13 @@ import { PageHeader, EmptyState } from "./components/ui";
 import { ReservationTable } from "./components/table/ReservationTable";
 import { ReservationDrawer } from "./components/reservation/ReservationDrawer";
 import { Dashboard } from "./pages/Dashboard";
+import { RoomTimeline } from "./pages/RoomTimeline";
+import "./timeline.css";
 import { Rooms } from "./pages/Rooms";
 import { Development } from "./pages/Development";
 import { pageInfo } from "./navigation";
 import { demoData } from "./lib/demo";
+import { loadRoomCatalog } from "./lib/roomCatalog";
 import { hotelDate, operationalRows, reservationRows } from "./lib/domain";
 import { loadDataset, supabase } from "./lib/supabase";
 import type { Dataset, ReservationRow } from "./lib/types";
@@ -53,7 +56,7 @@ function AccountDialog({
       </div>
       {!supabase ? (
         <p>
-          현재 데모 모드입니다. 실제 연결 방법은 README의 환경변수 설정을
+          현재 로그인 연결 전입니다. 실제 연결 방법은 README의 환경변수 설정을
           참고하세요.
         </p>
       ) : session ? (
@@ -147,11 +150,13 @@ function Workspace({
   data,
   propertyId,
   day,
+  onDayChange,
   onSelect,
 }: {
   data: Dataset;
   propertyId: number;
   day: string;
+  onDayChange: (day: string) => void;
   onSelect: (r: ReservationRow) => void;
 }) {
   const location = useLocation(),
@@ -160,7 +165,19 @@ function Workspace({
     q = new URLSearchParams(location.search).get("q") ?? "";
   if (location.pathname.startsWith("/development/"))
     return <Development id={info.id} />;
-  if (info.id === "dashboard" || info.id === "overview")
+  if (info.id === "dashboard")
+    return (
+      <RoomTimeline
+        key={propertyId}
+        data={data}
+        rows={rows}
+        propertyId={propertyId}
+        day={day}
+        onDayChange={onDayChange}
+        onSelect={onSelect}
+      />
+    );
+  if (info.id === "overview")
     return (
       <Dashboard
         data={data}
@@ -215,9 +232,16 @@ export default function App() {
     [mobile, setMobile] = useState(false),
     [account, setAccount] = useState(false);
   const [day, setDay] = useState(hotelDate()),
-    [mode, setMode] = useState<"demo" | "live">(supabase ? "live" : "demo"),
+    [mode, setMode] = useState<"demo" | "live" | "snapshot">(
+      import.meta.env.VITE_DEMO_MODE === "true"
+        ? "demo"
+        : supabase
+          ? "live"
+          : "snapshot",
+    ),
     [session, setSession] = useState<Session | null>(null);
-  const [data, setData] = useState<Dataset | null>(supabase ? null : demoData),
+  const [syncedAt, setSyncedAt] = useState("");
+  const [data, setData] = useState<Dataset | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false),
     [revision, setRevision] = useState(0),
@@ -250,13 +274,20 @@ export default function App() {
       return;
     }
     setData(null);
-    if (!session) {
+    if (mode === "live" && !session) {
       setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    loadDataset()
+    const request =
+      mode === "snapshot"
+        ? loadRoomCatalog().then((snapshot) => {
+            if (!cancelled) setSyncedAt(snapshot.syncedAt);
+            return snapshot.data;
+          })
+        : loadDataset();
+    request
       .then((next) => {
         if (!cancelled) {
           setData(next);
@@ -327,7 +358,15 @@ export default function App() {
             <i />
             {mode === "demo"
               ? "데모 모드 · 화면의 모든 데이터는 샘플입니다."
-              : "Supabase · 직원 계정 조회 전용"}
+              : mode === "snapshot"
+                ? "Supabase 객실·타입 · 동기화본" +
+                  (syncedAt
+                    ? " · " +
+                      new Date(syncedAt).toLocaleString("ko-KR", {
+                        timeZone: "Asia/Seoul",
+                      })
+                    : "")
+                : "Supabase · 직원 계정 조회 전용"}
           </span>
           <div>
             {data && data.properties.length > 0 && (
@@ -357,7 +396,7 @@ export default function App() {
             title={info.title}
             description={
               info.id === "dashboard"
-                ? "오늘의 운영 현황을 확인하고, 필요한 업무를 시작하세요."
+                ? "객실별 체크인·체크아웃 일정과 배정 현황을 한눈에 확인하세요."
                 : info.id === "in-house"
                   ? "현재 재실 상태인 예약을 확인합니다."
                   : info.group + " 업무를 한곳에서 확인하세요."
@@ -392,6 +431,12 @@ export default function App() {
               새로고침
             </button>
           </PageHeader>
+          {mode === "snapshot" && data && (
+            <div className="info-banner">
+              Supabase에 등록된 실제 객실·타입입니다. 예약·결제 내역은 연결 준비
+              중이며, 샘플 예약은 표시하지 않습니다.
+            </div>
+          )}
           {error ? (
             <div className="error-panel" role="alert">
               <h2>데이터를 불러오지 못했습니다</h2>
@@ -444,6 +489,7 @@ export default function App() {
                       data={data}
                       propertyId={propertyId}
                       day={day}
+                      onDayChange={setDay}
                       onSelect={setSelected}
                     />
                   ) : (
