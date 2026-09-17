@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import type { Dataset } from "../lib/types";
+import { roomStatus, isRoomOccupied } from "../lib/roomStatus";
 import { availableRooms } from "../lib/domain";
 import { EmptyState, StatusBadge } from "../components/ui";
 export function Rooms({
@@ -29,7 +30,13 @@ export function Rooms({
       (r) =>
         r.room_number.includes(search) &&
         (!status ||
-          (r.is_out_of_order ? "고장" : r.housekeeping_status) === status),
+          (status === "미정비"
+            ? r.housekeeping_status === "미정비"
+            : status === "재실"
+              ? isRoomOccupied(data, r)
+              : status === "공실"
+                ? !isRoomOccupied(data, r) && !r.is_out_of_order
+                : r.is_out_of_order)),
     )
     .sort((a, b) =>
       a.room_number.localeCompare(b.room_number, undefined, { numeric: true }),
@@ -80,11 +87,7 @@ export function Rooms({
                     )?.room_type_name ?? "—"}
                   </td>
                   <td>
-                    <StatusBadge
-                      status={
-                        r.is_out_of_order ? "고장" : r.housekeeping_status
-                      }
-                    />
+                    <StatusBadge status={roomStatus(data, r)} />
                   </td>
                   <td>{r.housekeeping_status}</td>
                   <td>{r.is_out_of_order ? "사용불가" : "—"}</td>

@@ -89,9 +89,14 @@ test("모든 메뉴 경로를 직접 열고 새로고침할 수 있다", async (
 
 test("접기와 노트북/모바일 메뉴 이동", async ({ page }) => {
   await page.goto("/");
+  await page.locator(".sidebar").hover();
   await page.getByRole("button", { name: "메뉴 접기", exact: true }).click();
   await expect(page.locator(".app")).toHaveClass(/is-collapsed/);
-  await page.getByRole("button", { name: "메뉴 펼치기" }).click();
+  await page.locator(".page-header").hover();
+  await page.locator(".sidebar").hover();
+  await expect(page.locator(".app")).not.toHaveClass(/is-collapsed/);
+  await page.locator(".page-header").hover();
+  await expect(page.locator(".app")).toHaveClass(/is-collapsed/);
   for (const width of [1920, 1440, 1024, 800, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(
@@ -249,6 +254,8 @@ test("실 입실 기본 AND 조건과 변경 조회·초기화·내보내기", a
 
 test("업무 탭 상태 보존과 메뉴 자동 접기", async ({ page }) => {
   await page.goto("/");
+  await page.locator(".sidebar").hover();
+  await page.getByRole("button", { name: "익스프레스", exact: true }).click();
   await page.getByRole("link", { name: "실 입실 목록", exact: true }).click();
   await expect(page.locator(".app")).toHaveClass(/is-collapsed/);
   await expect(
@@ -259,6 +266,7 @@ test("업무 탭 상태 보존과 메뉴 자동 접기", async ({ page }) => {
     .locator(".top-header")
     .getByRole("button", { name: "메뉴 열기", exact: true })
     .click();
+  await page.getByRole("button", { name: "익스프레스", exact: true }).click();
   await page.getByRole("link", { name: "예약 목록", exact: true }).click();
   await page
     .getByRole("combobox", { name: "예약 상태 필터" })
@@ -276,6 +284,7 @@ test("업무 탭 상태 보존과 메뉴 자동 접기", async ({ page }) => {
     .locator(".top-header")
     .getByRole("button", { name: "메뉴 열기", exact: true })
     .click();
+  await page.getByRole("button", { name: "익스프레스", exact: true }).click();
   await page.getByRole("link", { name: "예약 목록", exact: true }).click();
   await expect(page.getByRole("tab")).toHaveCount(3);
   await page

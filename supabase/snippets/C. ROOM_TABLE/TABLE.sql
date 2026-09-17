@@ -11,8 +11,9 @@ CREATE TABLE public.room (
 
     room_number text NOT NULL,
 
+    -- 청소·정비 상태만 저장. 공실·재실은 예약 객실의 stay_status로 판단
     housekeeping_status text NOT NULL
-        DEFAULT '공실',
+        DEFAULT '정비완료',
 
     is_out_of_order boolean NOT NULL
         DEFAULT false,
@@ -20,8 +21,7 @@ CREATE TABLE public.room (
     CONSTRAINT chk_housekeeping_status
         CHECK (
             housekeeping_status IN (
-                '공실',
-                '재실',
+                '정비완료',
                 '미정비'
             )
         ),

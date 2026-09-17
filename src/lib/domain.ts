@@ -1,3 +1,4 @@
+import { isRoomOccupied, stayStatus } from "./roomStatus";
 import type { Dataset, ReservationRow } from "./types";
 export function hotelDate(date = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -36,6 +37,7 @@ export function reservationRows(
       );
       return {
         ...r,
+        roomStayStatuses: items.map((item) => stayStatus(item, r)),
         customer:
           data.customers.find((x) => x.customer_id === r.customer_id)
             ?.customer_name ?? "고객 정보 없음",
@@ -76,10 +78,25 @@ export function operationalRows(
   day: string,
 ) {
   if (mode === "arrivals")
-    return rows.filter((r) => r.check_in === day && r.status === "예약");
+    return rows.filter(
+      (r) =>
+        r.check_in === day &&
+        ["예약", "재실"].includes(r.status) &&
+        (r.roomStayStatuses ?? [r.status]).includes("예약"),
+    );
   if (mode === "departures")
-    return rows.filter((r) => r.check_out === day && r.status === "재실");
-  if (mode === "in-house") return rows.filter((r) => r.status === "재실");
+    return rows.filter(
+      (r) =>
+        r.check_out === day &&
+        ["예약", "재실"].includes(r.status) &&
+        (r.roomStayStatuses ?? [r.status]).includes("재실"),
+    );
+  if (mode === "in-house")
+    return rows.filter(
+      (r) =>
+        ["예약", "재실"].includes(r.status) &&
+        (r.roomStayStatuses ?? [r.status]).includes("재실"),
+    );
   if (mode === "ota") return rows.filter((r) => r.partnerType === "OTA");
   if (mode === "agency") return rows.filter((r) => r.partnerType === "TBA");
   return rows;
@@ -92,7 +109,7 @@ export function availableRooms(data: Dataset, propertyId: number, day: string) {
           (r) =>
             r.reservation_id === rr.reservation_id &&
             r.property_id === propertyId &&
-            ["예약", "재실"].includes(r.status) &&
+            ["예약", "재실"].includes(stayStatus(rr, r)) &&
             r.check_in <= day &&
             day < r.check_out,
         ),
@@ -103,7 +120,8 @@ export function availableRooms(data: Dataset, propertyId: number, day: string) {
     (r) =>
       r.property_id === propertyId &&
       !r.is_out_of_order &&
-      r.housekeeping_status === "공실" &&
+      r.housekeeping_status === "정비완료" &&
+      !isRoomOccupied(data, r) &&
       !booked.has(r.room_id),
   );
 }

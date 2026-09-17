@@ -16,12 +16,13 @@ export interface RoomType {
   property_id: number;
   room_type_name: string;
 }
+export type HousekeepingStatus = "정비완료" | "미정비";
 export interface Room {
   room_id: number;
   property_id: number;
   room_type_id: number;
   room_number: string;
-  housekeeping_status: string;
+  housekeeping_status: HousekeepingStatus;
   is_out_of_order: boolean;
 }
 export interface Reservation {
@@ -35,6 +36,7 @@ export interface Reservation {
   note: string | null;
 }
 export interface ReservationRoom {
+  stay_status?: string;
   reservation_room_id: number;
   reservation_id: number;
   room_type_id: number;
@@ -89,6 +91,7 @@ export interface Dataset {
   rateTypes: RateType[];
 }
 export interface ReservationRow extends Reservation {
+  roomStayStatuses?: string[];
   customer: string;
   partner: string;
   partnerType: string;

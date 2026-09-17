@@ -6,8 +6,8 @@ import {
   CalendarDays,
   BedDouble,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import type { Dataset, ReservationRow } from "../lib/types";
+import { roomStatus, stayStatus } from "../lib/roomStatus";
 import { addDays, hotelDate, matchesSearch } from "../lib/domain";
 import {
   dateDistance,
@@ -23,6 +23,7 @@ export function RoomTimeline({
   day,
   onDayChange,
   onSelect,
+  onReservation,
 }: {
   data: Dataset;
   rows: ReservationRow[];
@@ -30,6 +31,7 @@ export function RoomTimeline({
   day: string;
   onDayChange: (day: string) => void;
   onSelect: (r: ReservationRow) => void;
+  onReservation: () => void;
 }) {
   const [period, setPeriod] = useState("14"),
     [floor, setFloor] = useState(""),
@@ -66,6 +68,7 @@ export function RoomTimeline({
           .filter((x) => x.room_id === room.room_id)
           .map((x) => ({
             id: x.reservation_room_id,
+            stayStatus: stayStatus(x, x.reservation),
             reservation: x.reservation,
           })),
         day,
@@ -90,7 +93,7 @@ export function RoomTimeline({
       x.room_id === null &&
       (!type || x.room_type_id === Number(type)) &&
       matchesSearch(x.reservation, search) &&
-      x.reservation.status !== "취소" &&
+      stayStatus(x, x.reservation) !== "취소" &&
       x.reservation.check_in < end &&
       x.reservation.check_out > day,
   );
@@ -141,12 +144,13 @@ export function RoomTimeline({
             1개월
           </button>
         </div>
-        <Link className="button" to="/express/arrivals">
-          입실 예정
-        </Link>
-        <Link className="button" to="/express/departures">
-          퇴실 예정
-        </Link>
+        <button
+          type="button"
+          className="button primary"
+          onClick={onReservation}
+        >
+          예약
+        </button>
       </div>
       <div className="timeline-filters">
         <div className="timeline-legend">
@@ -261,11 +265,7 @@ export function RoomTimeline({
                       (t) => t.room_type_id === room.room_type_id,
                     )?.room_type_name ?? "—"}
                   </span>
-                  <StatusBadge
-                    status={
-                      room.is_out_of_order ? "고장" : room.housekeeping_status
-                    }
-                  />
+                  <StatusBadge status={roomStatus(data, room)} />
                 </div>
                 <div className="room-track" role="cell">
                   <div className="timeline-cells" aria-hidden="true">
@@ -286,9 +286,9 @@ export function RoomTimeline({
                       key={b.id}
                       className={
                         "booking-bar " +
-                        (b.reservation.status === "재실"
+                        ((b.stayStatus ?? b.reservation.status) === "재실"
                           ? "occupied"
-                          : b.reservation.status === "퇴실"
+                          : (b.stayStatus ?? b.reservation.status) === "퇴실"
                             ? "departed"
                             : "assigned") +
                         (b.continuesBefore ? " continues-before" : "") +
@@ -309,7 +309,7 @@ export function RoomTimeline({
                         " 입실 " +
                         b.reservation.check_out +
                         " 퇴실 " +
-                        b.reservation.status
+                        (b.stayStatus ?? b.reservation.status)
                       }
                       title={
                         b.reservation.customer +
@@ -320,7 +320,7 @@ export function RoomTimeline({
                         " 입실 → " +
                         b.reservation.check_out +
                         " 퇴실 · " +
-                        b.reservation.status
+                        (b.stayStatus ?? b.reservation.status)
                       }
                     >
                       <span>
@@ -328,7 +328,7 @@ export function RoomTimeline({
                         {b.reservation.customer}
                       </span>
                       <small>
-                        {b.reservation.status}
+                        {b.stayStatus ?? b.reservation.status}
                         {b.continuesAfter ? " ›" : ""}
                       </small>
                     </button>
@@ -367,7 +367,7 @@ export function RoomTimeline({
                   {x.reservation.check_in.slice(5)} →{" "}
                   {x.reservation.check_out.slice(5)}
                 </span>
-                <StatusBadge status={x.reservation.status} />
+                <StatusBadge status={stayStatus(x, x.reservation)} />
               </button>
             ))}
           </div>

@@ -28,7 +28,7 @@ export const demoData: Dataset = {
     property_id: 1,
     room_type_id: (i % 3) + 1,
     room_number: String(301 + Math.floor(i / 6) * 100 + (i % 6)),
-    housekeeping_status: i < 4 ? "재실" : i >= 18 && i < 22 ? "미정비" : "공실",
+    housekeeping_status: i >= 18 && i < 22 ? "미정비" : "정비완료",
     is_out_of_order: i >= 22,
   })),
   reservations: Array.from({ length: 8 }, (_, i) => ({
@@ -43,6 +43,7 @@ export const demoData: Dataset = {
   })),
   reservationRooms: Array.from({ length: 8 }, (_, i) => ({
     reservation_room_id: i + 1,
+    stay_status: i < 4 ? "재실" : "예약",
     reservation_id: 1001 + i,
     room_type_id: (i % 3) + 1,
     room_id: i === 7 ? null : i + 1,

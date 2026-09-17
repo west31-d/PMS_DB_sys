@@ -6,6 +6,7 @@ export function StatusBadge({ status }: { status: string }) {
     (
       {
         공실: "green",
+        정비완료: "green",
         재실: "blue",
         예약: "blue",
         미정비: "orange",

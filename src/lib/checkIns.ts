@@ -1,3 +1,4 @@
+import { stayStatus } from "./roomStatus";
 import { reservationRows } from "./domain";
 import { dateDistance } from "./timeline";
 import type { Dataset } from "./types";
@@ -29,12 +30,7 @@ export function checkInReport(
   const includes = (text: string, query: string) =>
     text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
   return reservationRows(data, propertyId)
-    .filter(
-      (r) =>
-        r.status === "재실" &&
-        r.check_in >= filters.from &&
-        r.check_in <= filters.to,
-    )
+    .filter((r) => r.check_in >= filters.from && r.check_in <= filters.to)
     .filter(
       (r) =>
         includes(r.customer, filters.customer) &&
@@ -42,21 +38,24 @@ export function checkInReport(
           String(r.booking_partner_id) === filters.partnerId) &&
         includes(r.reference + " " + r.searchRefs, filters.reference),
     )
-    .filter(
-      (r) =>
-        data.reservationRooms.some(
-          (rr) =>
-            rr.reservation_id === r.reservation_id &&
-            (!filters.roomTypeId ||
-              String(rr.room_type_id) === filters.roomTypeId) &&
-            (!filters.roomNumber ||
-              includes(
-                data.rooms.find((room) => room.room_id === rr.room_id)
-                  ?.room_number ?? "",
-                filters.roomNumber,
-              )),
-        ) ||
-        (!filters.roomTypeId && !filters.roomNumber),
+    .filter((r) =>
+      data.reservationRooms.some(
+        (rr) =>
+          rr.reservation_id === r.reservation_id &&
+          stayStatus(rr, r) === "재실" &&
+          data.rooms.some(
+            (room) =>
+              room.room_id === rr.room_id && room.property_id === propertyId,
+          ) &&
+          (!filters.roomTypeId ||
+            String(rr.room_type_id) === filters.roomTypeId) &&
+          (!filters.roomNumber ||
+            includes(
+              data.rooms.find((room) => room.room_id === rr.room_id)
+                ?.room_number ?? "",
+              filters.roomNumber,
+            )),
+      ),
     )
     .map((r) => {
       const roomTypes = [

@@ -21,7 +21,6 @@ async function readRows<T>(
     if (checkIn)
       query = query
         .eq("property_id", checkIn.propertyId)
-        .eq("status", "재실")
         .gte("check_in", checkIn.from)
         .lte("check_in", checkIn.to);
     for (const column of order.split(",")) query = query.order(column);
@@ -80,7 +79,7 @@ export async function loadDataset(checkIn?: CheckInQuery): Promise<Dataset> {
     ),
     readRows<Dataset["reservationRooms"][number]>(
       "reservation_room",
-      "reservation_room_id,reservation_id,room_type_id,room_id,rate_amount",
+      "reservation_room_id,reservation_id,room_type_id,room_id,rate_amount,stay_status",
       "reservation_room_id",
     ),
     readRows<Dataset["refs"][number]>(

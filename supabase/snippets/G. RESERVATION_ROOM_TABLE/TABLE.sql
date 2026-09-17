@@ -11,6 +11,10 @@ create table public.reservation_room (
     room_id bigint
         references public.room(room_id),
 
+    -- 예약 내 개별 객실의 숙박 진행 상태
+    stay_status text not null default '예약'
+        check (stay_status in ('예약', '재실', '퇴실', '취소')),
+
     rate_amount numeric(12, 2) not null default 0,
 
     constraint chk_room_rate_amount

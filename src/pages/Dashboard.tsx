@@ -9,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { Dataset, ReservationRow } from "../lib/types";
+import { roomStatus } from "../lib/roomStatus";
 import { availableRooms, operationalRows } from "../lib/domain";
 import { StatCard, StatusBadge } from "../components/ui";
 import { ReservationTable } from "../components/table/ReservationTable";
@@ -29,30 +30,27 @@ export function Dashboard({
     arrivals = operationalRows(rows, "arrivals", day),
     departures = operationalRows(rows, "departures", day),
     inHouse = operationalRows(rows, "in-house", day);
-  const roomCount = (rs: ReservationRow[]) =>
-    data.reservationRooms.filter((rr) =>
-      rs.some((r) => r.reservation_id === rr.reservation_id),
-    ).length;
+  const roomCount = (rs: ReservationRow[], status: string) =>
+    rs.reduce(
+      (count, r) =>
+        count +
+        (r.roomStayStatuses ?? [r.status]).filter((s) => s === status).length,
+      0,
+    );
   const states = [
     {
       label: "공실",
-      count: rooms.filter(
-        (r) => !r.is_out_of_order && r.housekeeping_status === "공실",
-      ).length,
+      count: rooms.filter((r) => roomStatus(data, r) === "공실").length,
       color: "#25a282",
     },
     {
       label: "재실",
-      count: rooms.filter(
-        (r) => !r.is_out_of_order && r.housekeeping_status === "재실",
-      ).length,
+      count: rooms.filter((r) => roomStatus(data, r) === "재실").length,
       color: "#407ce8",
     },
     {
       label: "미정비",
-      count: rooms.filter(
-        (r) => !r.is_out_of_order && r.housekeeping_status === "미정비",
-      ).length,
+      count: rooms.filter((r) => roomStatus(data, r) === "미정비").length,
       color: "#e8a240",
     },
     {
@@ -66,21 +64,21 @@ export function Dashboard({
       <div className="stats-grid">
         <StatCard
           label="입실 예정"
-          value={roomCount(arrivals)}
+          value={roomCount(arrivals, "예약")}
           to="/express/arrivals"
           tone="blue"
           icon={<LogIn size={19} />}
         />
         <StatCard
           label="퇴실 예정"
-          value={roomCount(departures)}
+          value={roomCount(departures, "재실")}
           to="/express/departures"
           tone="purple"
           icon={<LogOut size={19} />}
         />
         <StatCard
           label="현재 재실"
-          value={roomCount(inHouse)}
+          value={roomCount(inHouse, "재실")}
           to="/express/in-house"
           tone="blue"
           icon={<BedDouble size={19} />}
@@ -94,7 +92,7 @@ export function Dashboard({
         />
         <StatCard
           label="미정비 객실"
-          value={states[2].count}
+          value={rooms.filter((r) => r.housekeeping_status === "미정비").length}
           to="/housekeeping/cleaning"
           tone="orange"
           icon={<Brush size={19} />}

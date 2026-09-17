@@ -28,6 +28,7 @@ export function roomFloor(number: string) {
 }
 export interface TimelineBooking {
   id: number;
+  stayStatus?: string;
   reservation: ReservationRow;
 }
 export function placeBookings(
@@ -41,6 +42,7 @@ export function placeBookings(
     .filter(
       (b) =>
         b.reservation.status !== "취소" &&
+        b.stayStatus !== "취소" &&
         b.reservation.check_in < b.reservation.check_out &&
         b.reservation.check_in < end &&
         b.reservation.check_out > start,

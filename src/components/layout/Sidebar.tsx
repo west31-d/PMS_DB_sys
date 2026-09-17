@@ -9,22 +9,29 @@ import {
 import { groups } from "../../navigation";
 export function Sidebar({
   collapsed,
+  expanded,
+  onHover,
+  onLeave,
   onToggle,
   onNavigate,
 }: {
   collapsed: boolean;
+  expanded: boolean;
+  onHover: () => void;
+  onLeave: () => void;
   onToggle: () => void;
   onNavigate: () => void;
 }) {
   const { pathname } = useLocation();
-  const [open, setOpen] = useState<string[]>(["express"]);
+  const [open, setOpen] = useState<string[]>([]);
   useEffect(() => {
-    const active = pathname.split("/")[1];
-    setOpen((old) => (old.includes(active) ? old : [...old, active]));
-  }, [pathname]);
+    setOpen([]);
+  }, [expanded]);
   return (
     <aside
       id="app-sidebar"
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
       className={"sidebar " + (collapsed ? "collapsed" : "")}
     >
       <NavLink
@@ -55,7 +62,10 @@ export function Sidebar({
               aria-controls={"submenu-" + group.id}
               title={group.label}
               onClick={() => {
-                if (collapsed) onToggle();
+                if (collapsed) {
+                  onToggle();
+                  return;
+                }
                 setOpen((old) =>
                   old.includes(group.id) && !collapsed
                     ? old.filter((x) => x !== group.id)

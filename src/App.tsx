@@ -14,6 +14,7 @@ import { ReservationDrawer } from "./components/reservation/ReservationDrawer";
 import { Dashboard } from "./pages/Dashboard";
 import { RoomTimeline } from "./pages/RoomTimeline";
 import { CheckedIn } from "./pages/CheckedIn";
+import { ReservationCreateDialog } from "./components/reservation/ReservationCreateDialog";
 import "./timeline.css";
 import { Rooms } from "./pages/Rooms";
 import { pageInfo } from "./navigation";
@@ -157,6 +158,7 @@ function Workspace({
   onDayChange,
   live,
   onSelect,
+  onReservation,
 }: {
   viewLocation: { pathname: string; search: string };
   active: boolean;
@@ -166,6 +168,7 @@ function Workspace({
   onDayChange: (day: string) => void;
   live: boolean;
   onSelect: (r: ReservationRow) => void;
+  onReservation: () => void;
 }) {
   const location = viewLocation,
     info = pageInfo(location.pathname),
@@ -191,6 +194,7 @@ function Workspace({
         day={day}
         onDayChange={onDayChange}
         onSelect={onSelect}
+        onReservation={onReservation}
       />
     );
   if (info.id === "overview")
@@ -248,7 +252,7 @@ export default function App() {
   }, []);
   const location = useLocation(),
     info = pageInfo(location.pathname);
-  const [collapsed, setCollapsed] = useState(false),
+  const [collapsed, setCollapsed] = useState(true),
     [mobile, setMobile] = useState(false),
     [account, setAccount] = useState(false);
   const [mode, setMode] = useState<"demo" | "live" | "snapshot">(
@@ -259,6 +263,10 @@ export default function App() {
           : "snapshot",
     ),
     [session, setSession] = useState<Session | null>(null);
+  const [reservationOpen, setReservationOpen] = useState(false);
+  const [developmentAccess, setDevelopmentAccess] = useState<boolean | null>(
+    null,
+  );
 
   const [data, setData] = useState<Dataset | null>(null),
     [error, setError] = useState(""),
@@ -266,6 +274,24 @@ export default function App() {
     [revision, setRevision] = useState(0),
     [propertyId, setPropertyId] = useState(1),
     [selected, setSelected] = useState<ReservationRow | null>(null);
+  useEffect(() => {
+    if (!supabase) {
+      setDevelopmentAccess(false);
+      return;
+    }
+    let active = true;
+    supabase.rpc("pms_development_mode").then(
+      ({ data, error }) => {
+        if (active) setDevelopmentAccess(!error && data === true);
+      },
+      () => {
+        if (active) setDevelopmentAccess(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [revision]);
   useEffect(() => {
     if (!supabase) return;
     let active = true;
@@ -293,7 +319,7 @@ export default function App() {
       return;
     }
     setData(null);
-    if (mode === "live" && !session) {
+    if (mode === "live" && !session && !developmentAccess) {
       setLoading(false);
       return;
     }
@@ -328,7 +354,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [mode, session, revision]);
+  }, [mode, session, revision, developmentAccess]);
   useEffect(() => {
     setSelected(null);
     setMobile(false);
@@ -345,6 +371,19 @@ export default function App() {
     >
       <Sidebar
         collapsed={collapsed}
+        expanded={narrow ? mobile : !collapsed}
+        onHover={() => {
+          if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+            setCollapsed(false);
+            if (narrow) setMobile(true);
+          }
+        }}
+        onLeave={() => {
+          if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+            setCollapsed(true);
+            setMobile(false);
+          }
+        }}
         onToggle={() => {
           if (window.matchMedia("(max-width: 960px)").matches) setMobile(false);
           else setCollapsed(!collapsed);
@@ -399,7 +438,17 @@ export default function App() {
               </select>
             )}
             {mode === "demo" && <span className="badge gray">데모</span>}
-            {supabase && <button className="button" onClick={()=>setMode(mode === "demo" ? "live" : "demo")}>{mode === "demo" ? "운영 화면" : "데모"}</button>}
+            {mode === "live" && developmentAccess && (
+              <span className="badge gray">개발용 · 실제 DB</span>
+            )}
+            {supabase && (
+              <button
+                className="button"
+                onClick={() => setMode(mode === "demo" ? "live" : "demo")}
+              >
+                {mode === "demo" ? "운영 화면" : "데모"}
+              </button>
+            )}
             {[
               "dashboard",
               "overview",
@@ -445,11 +494,11 @@ export default function App() {
                 다시 시도
               </button>
             </div>
-          ) : loading ? (
+          ) : loading || (mode === "live" && developmentAccess === null) ? (
             <div className="loading" role="status">
               <RefreshCw className="spin" /> 운영 데이터를 불러오는 중입니다…
             </div>
-          ) : mode === "live" && !session ? (
+          ) : mode === "live" && !session && !developmentAccess ? (
             <section className="panel">
               <EmptyState
                 title="직원 계정으로 로그인하세요"
@@ -491,6 +540,7 @@ export default function App() {
                     onDayChange={setDay}
                     live={mode === "live"}
                     onSelect={setSelected}
+                    onReservation={() => setReservationOpen(true)}
                   />
                 </section>
               ))}
@@ -505,9 +555,28 @@ export default function App() {
         </main>
       </div>
       {data && (
+        <ReservationCreateDialog
+          key={propertyId + mode + (session?.user.id ?? "")}
+          open={reservationOpen}
+          onClose={() => setReservationOpen(false)}
+          data={data}
+          propertyId={propertyId}
+          day={day}
+          live={mode === "live"}
+          onSaved={async () => {
+            const next = await loadDataset();
+            setData(next);
+          }}
+        />
+      )}
+      {data && (
         <ReservationDrawer
           row={selected}
           data={data}
+          live={mode === "live"}
+          onUpdated={async () => {
+            setData(await loadDataset());
+          }}
           onClose={() => setSelected(null)}
         />
       )}

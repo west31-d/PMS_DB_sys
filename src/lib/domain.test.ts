@@ -21,7 +21,7 @@ describe("호텔 운영 조회", () => {
         property_id: 1,
         room_type_id: 1,
         room_number: "301",
-        housekeeping_status: "공실",
+        housekeeping_status: "정비완료",
         is_out_of_order: false,
       },
     ];

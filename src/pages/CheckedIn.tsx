@@ -202,7 +202,7 @@ export function CheckedIn({
           </select>
         </label>
         <div className="checkin-status">
-          <span>예약 상태</span>
+          <span>객실 상태</span>
           <StatusBadge status="재실" />
         </div>
 
@@ -338,7 +338,7 @@ export function CheckedIn({
             {!rows.length && (
               <EmptyState
                 title="조건에 맞는 실 입실 내역이 없습니다"
-                description="선택한 입실일 범위에 해당하고 현재 상태가 재실인 예약만 표시합니다."
+                description="선택한 입실일 범위에 해당하고 예약 객실별 숙박 상태가 재실인 예약만 표시합니다."
               />
             )}
             <div className="pagination">
@@ -369,6 +369,16 @@ export function CheckedIn({
         )}
       </section>
       <ReservationDrawer
+        live={live}
+        onUpdated={async () =>
+          setResult(
+            await loadDataset({
+              propertyId,
+              from: applied.from,
+              to: applied.to,
+            }),
+          )
+        }
         row={selected}
         data={result}
         onClose={() => setSelected(null)}
