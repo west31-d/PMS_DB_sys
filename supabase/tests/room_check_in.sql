@@ -1,6 +1,6 @@
 BEGIN;
 DO $$
-DECLARE v_room public.room%ROWTYPE; v_customer bigint;
+DECLARE v_room public.room%ROWTYPE; v_customer bigint; v_offset integer;
 BEGIN
   SELECT * INTO v_room FROM public.room rm WHERE NOT rm.is_out_of_order
     AND rm.housekeeping_status = '정비완료'
@@ -9,10 +9,22 @@ BEGIN
   SELECT customer_id INTO v_customer FROM public.customer LIMIT 1;
   IF v_room.room_id IS NULL OR v_customer IS NULL THEN RAISE EXCEPTION 'Test fixture unavailable'; END IF;
   INSERT INTO public.reservation(reservation_id, property_id, customer_id, check_in, check_out, status)
-    VALUES (-9172001, v_room.property_id, v_customer, current_date, current_date + 1, '예약');
+    VALUES (-9172001, v_room.property_id, v_customer, (now() AT TIME ZONE 'Asia/Seoul')::date, (now() AT TIME ZONE 'Asia/Seoul')::date + 1, '예약');
   INSERT INTO public.reservation_room(reservation_room_id, reservation_id, room_type_id, room_id)
     VALUES (-9172001, -9172001, v_room.room_type_id, v_room.room_id),
            (-9172002, -9172001, v_room.room_type_id, NULL);
+  FOREACH v_offset IN ARRAY ARRAY[-1, 1] LOOP
+    UPDATE public.reservation SET check_in = (now() AT TIME ZONE 'Asia/Seoul')::date + v_offset,
+      check_out = (now() AT TIME ZONE 'Asia/Seoul')::date + v_offset + 1 WHERE reservation_id = -9172001;
+    BEGIN
+      PERFORM public.pms_check_in_room(-9172001);
+      RAISE EXCEPTION 'Non-today arrival accepted';
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM <> '체크인 날짜가 오늘인 객실만 입실 처리할 수 있습니다.' THEN RAISE; END IF;
+    END;
+  END LOOP;
+  UPDATE public.reservation SET check_in = (now() AT TIME ZONE 'Asia/Seoul')::date,
+    check_out = (now() AT TIME ZONE 'Asia/Seoul')::date + 1 WHERE reservation_id = -9172001;
   PERFORM public.pms_check_in_room(-9172001);
   PERFORM public.pms_check_in_room(-9172001);
   IF (SELECT stay_status FROM public.reservation_room WHERE reservation_room_id = -9172001) <> '재실'

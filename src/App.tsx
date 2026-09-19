@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { CalendarDays, RefreshCw, X, LogIn } from "lucide-react";
 import { Sidebar } from "./components/layout/Sidebar";
+import { usePopupClose } from "./lib/usePopupClose";
 import { TopHeader } from "./components/layout/TopHeader";
 import {
   WorkspaceTabs,
@@ -13,10 +14,14 @@ import { ReservationTable } from "./components/table/ReservationTable";
 import { ReservationDrawer } from "./components/reservation/ReservationDrawer";
 import { Dashboard } from "./pages/Dashboard";
 import { RoomTimeline } from "./pages/RoomTimeline";
+import { AvailableRooms } from "./pages/AvailableRooms";
 import { CheckedIn } from "./pages/CheckedIn";
+import { Reservations } from "./pages/Reservations";
 import { ReservationCreateDialog } from "./components/reservation/ReservationCreateDialog";
+import { CheckOutDialog } from "./components/reservation/CheckOutDialog";
 import "./timeline.css";
 import { Rooms } from "./pages/Rooms";
+import { Housekeeping } from "./pages/Housekeeping";
 import { pageInfo } from "./navigation";
 import { demoData } from "./lib/demo";
 import { loadRoomCatalog } from "./lib/roomCatalog";
@@ -26,7 +31,7 @@ import type { Dataset, ReservationRow } from "./lib/types";
 
 function AccountDialog({
   open,
-  onClose,
+  onClose: onClosed,
   session,
 }: {
   open: boolean;
@@ -34,6 +39,7 @@ function AccountDialog({
   session: Session | null;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const onClose = usePopupClose(ref, onClosed);
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [error, setError] = useState(""),
@@ -47,7 +53,10 @@ function AccountDialog({
       aria-label="계정"
       className="account-dialog"
       ref={ref}
-      onCancel={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
     >
       <div className="section-header">
         <h2>{session ? "내 계정" : "Supabase 로그인"}</h2>
@@ -142,8 +151,6 @@ function AccountDialog({
   );
 }
 const pending: Record<string, string> = {
-  "checked-out":
-    "실 퇴실 기록 기능을 준비하고 있습니다. 퇴실 예정 목록에서 예약을 확인하세요.",
   "no-show": "노쇼 관리 기능을 준비하고 있습니다.",
   cards: "등록 카드 양식과 출력 기능은 준비 중입니다.",
   closing:
@@ -159,6 +166,8 @@ function Workspace({
   live,
   onSelect,
   onReservation,
+  onCheckOut,
+  onUpdated,
 }: {
   viewLocation: { pathname: string; search: string };
   active: boolean;
@@ -169,19 +178,32 @@ function Workspace({
   live: boolean;
   onSelect: (r: ReservationRow) => void;
   onReservation: () => void;
+  onCheckOut: () => void;
+  onUpdated: () => Promise<void>;
 }) {
   const location = viewLocation,
     info = pageInfo(location.pathname),
     rows = reservationRows(data, propertyId),
     q = new URLSearchParams(location.search).get("q") ?? "";
-  if (info.id === "checked-in")
+  if (["checked-in", "checked-out", "arrivals"].includes(info.id))
     return (
       <CheckedIn
-        key={propertyId}
+        key={propertyId + info.id}
+        mode={info.id === "checked-out" ? "check_out" : info.id === "arrivals" ? "arrivals" : "check_in"}
         data={data}
         propertyId={propertyId}
         live={live}
         active={active}
+      />
+    );
+  if (info.id === "reservations")
+    return (
+      <Reservations
+        key={propertyId + q}
+        data={data}
+        propertyId={propertyId}
+        onSelect={onSelect}
+        initialSearch={q}
       />
     );
   if (info.id === "dashboard")
@@ -195,6 +217,7 @@ function Workspace({
         onDayChange={onDayChange}
         onSelect={onSelect}
         onReservation={onReservation}
+        onCheckOut={onCheckOut}
       />
     );
   if (info.id === "overview")
@@ -207,7 +230,30 @@ function Workspace({
         onSelect={onSelect}
       />
     );
-  if (["available", "cleaning", "out-of-order"].includes(info.id))
+  if (info.id === "available")
+    return (
+      <AvailableRooms
+        data={data}
+        propertyId={propertyId}
+        day={day}
+        onDayChange={onDayChange}
+      />
+    );
+  if (info.id === "cleaning")
+    return (
+      <Housekeeping
+        key={propertyId}
+        data={data}
+        propertyId={propertyId}
+        day={day}
+        onDayChange={onDayChange}
+        live={live}
+        active={active}
+        onSelect={onSelect}
+        onUpdated={onUpdated}
+      />
+    );
+  if (info.id === "out-of-order")
     return (
       <Rooms
         key={info.id}
@@ -235,6 +281,7 @@ function Workspace({
         rows={operationalRows(rows, info.id, day)}
         onSelect={onSelect}
         initialSearch={q}
+        checkInDay={info.id === "reservations" ? hotelDate() : undefined}
       />
     </>
   );
@@ -264,6 +311,7 @@ export default function App() {
     ),
     [session, setSession] = useState<Session | null>(null);
   const [reservationOpen, setReservationOpen] = useState(false);
+  const [checkOutOpen, setCheckOutOpen] = useState(false);
   const [developmentAccess, setDevelopmentAccess] = useState<boolean | null>(
     null,
   );
@@ -541,6 +589,8 @@ export default function App() {
                     live={mode === "live"}
                     onSelect={setSelected}
                     onReservation={() => setReservationOpen(true)}
+                    onCheckOut={() => setCheckOutOpen(true)}
+                    onUpdated={async () => setData(await loadDataset())}
                   />
                 </section>
               ))}
@@ -554,6 +604,16 @@ export default function App() {
           ) : null}
         </main>
       </div>
+      {data && checkOutOpen && (
+        <CheckOutDialog
+          key={propertyId + mode + (session?.user.id ?? "")}
+          data={data}
+          propertyId={propertyId}
+          live={mode === "live"}
+          onClose={() => setCheckOutOpen(false)}
+          onUpdated={async () => setData(await loadDataset())}
+        />
+      )}
       {data && (
         <ReservationCreateDialog
           key={propertyId + mode + (session?.user.id ?? "")}

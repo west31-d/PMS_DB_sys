@@ -1,10 +1,49 @@
 import { describe, expect, it } from "vitest";
 import { demoData } from "./demo";
 import { availableRooms, operationalRows, reservationRows } from "./domain";
-import { isRoomOccupied, roomStatus } from "./roomStatus";
+import {
+  isRoomOccupied,
+  roomStatus,
+  canCancelCheckIn,
+  canCheckIn,
+} from "./roomStatus";
 import { checkInReport, defaultCheckInFilters } from "./checkIns";
 
 describe("숙박 상태와 청소 상태 분리", () => {
+  it("입실은 한국 날짜 기준 당일의 배정된 예약 객실만 허용한다", () => {
+    const booking = {
+      ...demoData.reservations[0],
+      check_in: "2026-09-18",
+      status: "예약",
+    };
+    const line = { ...demoData.reservationRooms[0], stay_status: "예약" };
+    expect(canCheckIn(line, booking, "2026-09-18")).toBe(true);
+    expect(canCheckIn(line, booking, "2026-09-17")).toBe(false);
+    expect(canCheckIn(line, booking, "2026-09-19")).toBe(false);
+    expect(canCheckIn({ ...line, room_id: null }, booking, "2026-09-18")).toBe(
+      false,
+    );
+    expect(canCheckIn(line, { ...booking, status: "취소" }, "2026-09-18")).toBe(
+      false,
+    );
+  });
+  it("입실 취소는 당일 재실 객실만 허용한다", () => {
+    const booking = {
+      ...demoData.reservations[0],
+      check_in: "2026-09-18",
+      status: "재실",
+    };
+    const line = { ...demoData.reservationRooms[0], stay_status: "재실" };
+    expect(canCancelCheckIn(line, booking, "2026-09-18")).toBe(true);
+    expect(canCancelCheckIn(line, booking, "2026-09-19")).toBe(false);
+    expect(canCancelCheckIn(line, booking, "2026-09-17")).toBe(false);
+    expect(
+      canCancelCheckIn({ ...line, stay_status: "예약" }, booking, "2026-09-18"),
+    ).toBe(false);
+    expect(
+      canCancelCheckIn(line, { ...booking, status: "퇴실" }, "2026-09-18"),
+    ).toBe(false);
+  });
   it("일부 입실 예약의 남은 객실은 입실 예정으로 남는다", () => {
     const data = structuredClone(demoData);
     data.reservations[0].check_in = "2026-09-17";

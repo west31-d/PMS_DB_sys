@@ -1,0 +1,172 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: #fff;
+  color: #000;
+  font-family:
+    "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR",
+    sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sheet {
+  width: 285mm;
+  min-height: 197mm;
+  display: flex;
+  gap: 2mm;
+  padding: 0;
+  background: #fff;
+  color: #000;
+}
+.panel {
+  border: 0.45mm solid #000;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.p-clean {
+  width: 107mm;
+  flex-shrink: 0;
+}
+.p-note {
+  width: 64mm;
+  flex-shrink: 0;
+}
+.p-daily {
+  flex: 1;
+}
+.ptitle {
+  font-size: 13pt;
+  font-weight: 800;
+  text-align: center;
+  padding: 1.4mm 0;
+  border-bottom: 0.45mm solid #000;
+  line-height: 1.15;
+}
+.ptitle .sub {
+  font-size: 9pt;
+  color: #333;
+  margin-left: 2mm;
+}
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+.grid {
+  margin: 0;
+}
+.grid td {
+  border: 0.25mm solid #000;
+  height: var(--rh);
+  text-align: center;
+  padding: 0;
+  font-size: 8.5pt;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.grid .blue {
+  background: #0070c0;
+  color: #000;
+}
+.grid .red {
+  background: #ff0000;
+  color: #000;
+}
+.grid .yellow {
+  background: #ffff00;
+  color: #ff0000;
+}
+.grid .broken {
+  background: #ddd;
+  color: #000;
+}
+.grid .hole {
+  background: #fff;
+}
+.grid td.ci {
+  font-size: 6.5pt;
+  font-weight: 800;
+  color: #000;
+  letter-spacing: -0.2pt;
+}
+.grid td.sum-l {
+  font-size: 8.5pt;
+}
+.grid td.sum-v {
+  font-size: 10pt;
+}
+.grid td.sum-v.y {
+  background: #ffff00;
+  color: #ff0000;
+}
+.nbox {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.nhead {
+  font-size: 11pt;
+  font-weight: 800;
+  text-align: center;
+  padding: 1.2mm 0;
+  border-bottom: 0.35mm solid #000;
+}
+.nbody {
+  flex: 1;
+  padding: 1.6mm 2mm;
+  font-size: 8.5pt;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 22mm;
+}
+.nsplit {
+  border-top: 0.45mm solid #000;
+}
+.daily {
+  font-size: 6.2pt;
+}
+.daily th {
+  background: #d9d9d9;
+  border: 0.2mm solid #000;
+  font-weight: 800;
+  padding: 0.7mm 0;
+  height: 5mm;
+}
+.daily td {
+  border: 0.2mm solid #000;
+  text-align: center;
+  height: var(--drh);
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.daily td.b {
+  font-weight: 800;
+}
+.daily td.in {
+  color: #0070c0;
+  font-weight: 800;
+}
+.daily td.out {
+  color: #ff0000;
+  font-weight: 800;
+}
+.daily tr.sel td {
+  background: #d3f9d8;
+  font-weight: 800;
+}
+@page {
+  size: A4 landscape;
+  margin: 6mm;
+}

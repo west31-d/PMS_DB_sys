@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { CalendarDays, X } from "lucide-react";
 import { NewReservation } from "../../pages/NewReservation";
 import type { Dataset } from "../../lib/types";
+import { usePopupClose } from "../../lib/usePopupClose";
 
 export function ReservationCreateDialog({
   open,
-  onClose,
+  onClose: onClosed,
   ...form
 }: {
   open: boolean;
@@ -17,6 +18,7 @@ export function ReservationCreateDialog({
   onSaved: () => Promise<void>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const onClose = usePopupClose(dialog, onClosed);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) {
@@ -55,7 +57,9 @@ export function ReservationCreateDialog({
         </button>
       </header>
       <div className="reservation-dialog-body">
-        <NewReservation {...form} onClose={onClose} onSavingChange={setBusy} />
+        {open && (
+          <NewReservation {...form} onClose={onClose} onSavingChange={setBusy} />
+        )}
       </div>
     </dialog>
   );

@@ -7,6 +7,30 @@ export function stayStatus(line: ReservationRoom, booking: Reservation) {
   return line.stay_status ?? booking.status;
 }
 
+export function canCheckIn(
+  line: ReservationRoom,
+  booking: Reservation,
+  today: string,
+) {
+  return (
+    line.room_id !== null &&
+    booking.check_in === today &&
+    stayStatus(line, booking) === "예약"
+  );
+}
+
+export function canCancelCheckIn(
+  line: ReservationRoom,
+  booking: Reservation,
+  today: string,
+) {
+  return (
+    line.room_id !== null &&
+    booking.check_in === today &&
+    stayStatus(line, booking) === "재실"
+  );
+}
+
 export function isRoomOccupied(data: Dataset, room: Room) {
   return data.reservationRooms.some(
     (line) =>

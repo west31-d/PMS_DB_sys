@@ -23,6 +23,24 @@ const input: ReservationInput = {
   ],
 };
 describe("예약 입력 검증", () => {
+  it("객실타입과 객실은 필수이며 호수 없는 여러 객실은 저장할 수 있다", () => {
+    expect(validateReservation({ ...input, rooms: [] })).not.toBeNull();
+    expect(
+      validateReservation({
+        ...input,
+        rooms: [{ ...input.rooms[0], room_type_id: 0, room_id: null }],
+      }),
+    ).not.toBeNull();
+    expect(
+      validateReservation({
+        ...input,
+        rooms: Array.from({ length: 3 }, () => ({
+          ...input.rooms[0],
+          room_id: null,
+        })),
+      }),
+    ).toBeNull();
+  });
   it("신규/기존 고객과 미배정 객실을 지원한다", () => {
     expect(validateReservation(input)).toBeNull();
     expect(

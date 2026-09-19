@@ -7,6 +7,7 @@ export interface CheckInQuery {
   propertyId: number;
   from: string;
   to: string;
+  dateField?: "check_in" | "check_out";
 }
 async function readRows<T>(
   table: string,
@@ -21,8 +22,8 @@ async function readRows<T>(
     if (checkIn)
       query = query
         .eq("property_id", checkIn.propertyId)
-        .gte("check_in", checkIn.from)
-        .lte("check_in", checkIn.to);
+        .gte(checkIn.dateField ?? "check_in", checkIn.from)
+        .lte(checkIn.dateField ?? "check_in", checkIn.to);
     for (const column of order.split(",")) query = query.order(column);
     const { data, error } = await query.range(from, from + 999);
     if (error) throw new Error(table + ": " + error.message);

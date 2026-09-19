@@ -1,0 +1,157 @@
+.checkout-dialog {
+  width: min(1280px, calc(100vw - 32px));
+}
+.checkout-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+.checkout-list {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.checkout-tabs {
+  display: flex;
+  gap: 5px;
+}
+.checkout-tabs .button {
+  flex: 1;
+  padding: 8px;
+  font-size: 12px;
+}
+.checkout-tabs [aria-pressed="true"] {
+  background: #edf4ff;
+  border-color: #326ad2;
+  color: #326ad2;
+}
+.checkout-list > label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: #506079;
+}
+.checkout-list input {
+  width: 100%;
+  min-width: 0;
+}
+.checkout-bookings {
+  display: grid;
+  gap: 8px;
+}
+.checkout-bookings > button {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #dce3ed;
+  border-radius: 8px;
+  text-align: left;
+  color: #25334a;
+  overflow-wrap: anywhere;
+}
+.checkout-bookings > button.is-selected {
+  border-color: #326ad2;
+  background: #edf4ff;
+}
+.checkout-bookings small {
+  color: #687a92;
+}
+.checkout-detail {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 0;
+}
+.checkout-empty {
+  padding: 80px 20px;
+  text-align: center;
+  color: #7b8798;
+}
+.checkout-info {
+  padding: 16px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.checkout-info dt {
+  font-size: 11px;
+  color: #7b8798;
+}
+.checkout-info dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.checkout-note {
+  grid-column: 1 / -1;
+}
+.checkout-rooms {
+  display: grid;
+  padding: 12px 16px;
+  gap: 8px;
+}
+.checkout-rooms label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #dce3ed;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.checkout-rooms label:has(:checked) {
+  background: #edf4ff;
+  border-color: #94bafd;
+}
+.checkout-rooms label > span:last-child {
+  margin-left: auto;
+}
+.checkout-rooms input {
+  accent-color: #326ad2;
+  width: 18px;
+  height: 18px;
+}
+.checkout-totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+.checkout-totals > div {
+  display: grid;
+  gap: 8px;
+}
+.checkout-totals span {
+  font-size: 12px;
+  color: #7b8798;
+}
+.checkout-totals strong {
+  color: #326ad2;
+}
+.checkout-hint {
+  padding: 0 16px 12px;
+  margin: 0;
+  font-size: 12px;
+  color: #687a92;
+}
+.checkout-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .checkout-layout {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .checkout-totals {
+    grid-template-columns: 1fr 1fr;
+  }
+}

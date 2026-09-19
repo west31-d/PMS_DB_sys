@@ -8,12 +8,21 @@ export function ReservationTable({
   onSelect,
   compact = false,
   initialSearch = "",
+  checkInDay,
+  showFilters = true,
+  fullDates = false,
 }: {
   rows: ReservationRow[];
   onSelect: (r: ReservationRow) => void;
   compact?: boolean;
   initialSearch?: string;
+  checkInDay?: string;
+  showFilters?: boolean;
+  fullDates?: boolean;
 }) {
+  const [startDate, setStartDate] = useState(checkInDay ?? "");
+  const [endDate, setEndDate] = useState(checkInDay ?? "");
+  const invalidDates = !!(startDate && endDate && startDate > endDate);
   const [search, setSearch] = useState(initialSearch),
     [status, setStatus] = useState(""),
     [partner, setPartner] = useState(""),
@@ -28,6 +37,10 @@ export function ReservationTable({
         .filter(
           (r) =>
             matchesSearch(r, search) &&
+            (!checkInDay ||
+              (!invalidDates &&
+                (!startDate || r.check_in >= startDate) &&
+                (!endDate || r.check_in <= endDate))) &&
             (!status || r.status === status) &&
             (!partner || r.partner === partner),
         )
@@ -41,7 +54,17 @@ export function ReservationTable({
             (sort.asc ? 1 : -1)
           );
         }),
-    [rows, search, status, partner, sort],
+    [
+      rows,
+      search,
+      status,
+      partner,
+      sort,
+      checkInDay,
+      startDate,
+      endDate,
+      invalidDates,
+    ],
   );
   const size = compact ? 5 : 10,
     pages = Math.max(1, Math.ceil(filtered.length / size)),
@@ -52,7 +75,51 @@ export function ReservationTable({
   }
   return (
     <div className="table-card">
-      {!compact && (
+      {checkInDay && (
+        <div className="reservation-list-dates">
+          <span className="reservation-date-label">체크인</span>
+          <label>
+            <span className="sr-only">체크인 시작일</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          <span aria-hidden="true">~</span>
+          <label>
+            <span className="sr-only">체크인 종료일</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          <button
+            className="button"
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+              setPage(1);
+            }}
+          >
+            전체 기간
+          </button>
+          <p>체크인 날짜 기준 · 시작일과 종료일 포함 · 객실 미배정 예약 포함</p>
+          {invalidDates && (
+            <p role="alert" className="error-text">
+              종료일은 시작일 이후 또는 같은 날짜로 선택하세요.
+            </p>
+          )}
+        </div>
+      )}
+      {!compact && showFilters && (
         <div className="table-toolbar">
           <div className="filter-search">
             <Search size={16} />
@@ -172,8 +239,16 @@ export function ReservationTable({
                 <td className="customer-name">{r.customer}</td>
                 <td>{r.roomLabel}</td>
                 <td>{r.partner}</td>
-                <td>{r.check_in.slice(5).replace("-", ".")}</td>
-                <td>{r.check_out.slice(5).replace("-", ".")}</td>
+                <td>
+                  {checkInDay || fullDates
+                    ? r.check_in
+                    : r.check_in.slice(5).replace("-", ".")}
+                </td>
+                <td>
+                  {checkInDay || fullDates
+                    ? r.check_out
+                    : r.check_out.slice(5).replace("-", ".")}
+                </td>
                 <td>
                   <StatusBadge status={r.status} />
                 </td>

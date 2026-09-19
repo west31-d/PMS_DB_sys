@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePopupClose } from "../../lib/usePopupClose";
 import { stayStatus } from "../../lib/roomStatus";
 import type { Dataset } from "../../lib/types";
 
@@ -16,7 +17,7 @@ export function RoomAssignmentDialog({
   allocations,
   initialKey,
   onApply,
-  onClose,
+  onClose: onClosed,
 }: {
   data: Dataset;
   propertyId: number;
@@ -28,6 +29,7 @@ export function RoomAssignmentDialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const onClose = usePopupClose(ref, onClosed);
   const [draft, setDraft] = useState(() => allocations.map((r) => ({ ...r })));
   const [targetKey, setTargetKey] = useState(initialKey);
   const [search, setSearch] = useState("");

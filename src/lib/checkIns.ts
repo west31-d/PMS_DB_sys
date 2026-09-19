@@ -26,11 +26,20 @@ export function checkInReport(
   data: Dataset,
   propertyId: number,
   filters: CheckInFilters,
+  mode: "check_in" | "check_out" | "arrivals" = "check_in",
 ) {
+  const dateField = mode === "check_out" ? "check_out" : "check_in";
+  if (mode === "arrivals") {
+    const bookings = new Map(data.reservations.map(r => [r.reservation_id, r]));
+    data = { ...data, reservationRooms: data.reservationRooms.filter(line => {
+      const booking = bookings.get(line.reservation_id);
+      return booking && stayStatus(line, booking) === "예약";
+    }) };
+  }
   const includes = (text: string, query: string) =>
     text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
   return reservationRows(data, propertyId)
-    .filter((r) => r.check_in >= filters.from && r.check_in <= filters.to)
+    .filter((r) => r[dateField] >= filters.from && r[dateField] <= filters.to)
     .filter(
       (r) =>
         includes(r.customer, filters.customer) &&
@@ -42,11 +51,11 @@ export function checkInReport(
       data.reservationRooms.some(
         (rr) =>
           rr.reservation_id === r.reservation_id &&
-          stayStatus(rr, r) === "재실" &&
-          data.rooms.some(
+          stayStatus(rr, r) === (mode === "check_out" ? "퇴실" : mode === "arrivals" ? "예약" : "재실") &&
+          ((mode === "arrivals" && rr.room_id === null) || data.rooms.some(
             (room) =>
               room.room_id === rr.room_id && room.property_id === propertyId,
-          ) &&
+          )) &&
           (!filters.roomTypeId ||
             String(rr.room_type_id) === filters.roomTypeId) &&
           (!filters.roomNumber ||
@@ -82,7 +91,7 @@ export function checkInReport(
     })
     .sort(
       (a, b) =>
-        a.check_in.localeCompare(b.check_in) ||
+        a[dateField].localeCompare(b[dateField]) ||
         a.roomLabel.localeCompare(b.roomLabel, undefined, { numeric: true }),
     );
 }

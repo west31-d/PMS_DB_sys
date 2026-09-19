@@ -25,6 +25,7 @@ import {
   type RoomConfiguration,
 } from "../lib/reservationPricing";
 import { ReservationSelectDialog } from "../components/reservation/ReservationSelectDialog";
+import { RoomDetailsDialog } from "../components/reservation/RoomDetailsDialog";
 import { RoomAssignmentDialog } from "../components/reservation/RoomAssignmentDialog";
 import "../reservation.css";
 
@@ -35,7 +36,7 @@ type ServiceLine = {
   quantity: string;
   price: string;
 };
-type Picker = "customer" | "partner" | "roomType" | null;
+type Picker = "partner" | null;
 export function NewReservation({
   data,
   propertyId,
@@ -57,9 +58,7 @@ export function NewReservation({
   const services = data.chargeItems.filter(
     (s) => s.property_id === propertyId && s.is_active,
   );
-  const [customerMode, setCustomerMode] = useState("new");
   const [customer, setCustomer] = useState("");
-  const [customerId, setCustomerId] = useState<number | null>(null);
   const [checkIn, setCheckIn] = useState(day);
   const [checkOut, setCheckOut] = useState(addDays(day, 1));
   const [partnerId, setPartnerId] = useState<number | null>(null);
@@ -68,6 +67,7 @@ export function NewReservation({
   const [rooms, setRooms] = useState<RoomConfiguration[]>([]);
   const [charges, setCharges] = useState<ServiceLine[]>([]);
   const [picker, setPicker] = useState<Picker>(null);
+  const [roomDetailsOpen, setRoomDetailsOpen] = useState(false);
   const [assignmentKey, setAssignmentKey] = useState<number | null>(null);
   const allocations = rooms
     .flatMap((r) =>
@@ -130,53 +130,17 @@ export function NewReservation({
       0,
     ) / 100;
   const totalCount = rooms.reduce((sum, r) => sum + r.count, 0);
-  const selectedCustomer = data.customers.find(
-    (c) => c.customer_id === customerId,
-  );
   const selectedPartner = data.partners.find((p) => p.partner_id === partnerId);
-  const related =
-    customerMode === "existing" && customerId
-      ? data.reservations
-          .filter(
-            (r) => r.property_id === propertyId && r.customer_id === customerId,
-          )
-          .sort((a, b) => b.check_in.localeCompare(a.check_in))
-      : [];
 
   useEffect(() => {
     onSavingChange(busy);
   }, [busy, onSavingChange]);
-  function addRoom(typeId: number) {
-    if (totalCount >= 100) {
-      setError("예약당 객실은 최대 100실까지 입력하세요.");
-      return;
-    }
-    setRooms((old) =>
-      old.some((r) => r.room_type_id === typeId)
-        ? old.map((r) =>
-            r.room_type_id === typeId ? { ...r, count: r.count + 1 } : r,
-          )
-        : [...old, { room_type_id: typeId, count: 1 }],
-    );
-  }
-  function setCount(typeId: number, count: number) {
-    if (!Number.isInteger(count) || count < 1 || count > 100) return;
-    setRooms((old) =>
-      old.map((r) =>
-        r.room_type_id === typeId
-          ? { ...r, count, room_ids: r.room_ids?.slice(0, count) }
-          : r,
-      ),
-    );
-  }
   function reset() {
     setSaved(null);
     setError("");
     setRefreshError("");
     request.current = null;
-    setCustomerMode("new");
     setCustomer("");
-    setCustomerId(null);
     setCheckIn(day);
     setCheckOut(addDays(day, 1));
     setPartnerId(null);
@@ -196,26 +160,20 @@ export function NewReservation({
       setError("프로퍼티를 선택하세요.");
       return;
     }
-    if (customerMode === "existing" && !selectedCustomer) {
-      setError("기존 고객을 검색해서 선택하세요.");
-      return;
-    }
     if (!selectedPartner) {
       setError("예약 거래처를 선택하세요.");
       return;
     }
     if (!allRatesKnown) {
-      setError(
-        "객실타입별 1박 요금을 입력하세요.",
-      );
+      setError("객실타입별 1박 요금을 입력하세요.");
       return;
     }
     let input: ReservationInput;
     try {
       input = {
         property_id: propertyId,
-        customer_id: customerMode === "existing" ? customerId : null,
-        customer_name: customerMode === "new" ? customer.trim() : null,
+        customer_id: null,
+        customer_name: customer.trim(),
         booking_partner_id: partnerId,
         check_in: checkIn,
         check_out: checkOut,
@@ -338,54 +296,15 @@ export function NewReservation({
                   }
                 />
               </label>
-              <div
-                className="reservation-customer-mode"
-                role="group"
-                aria-label="고객 입력 방식"
-              >
-                <button
-                  type="button"
-                  aria-pressed={customerMode === "new"}
-                  onClick={() => setCustomerMode("new")}
-                >
-                  신규 고객
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={customerMode === "existing"}
-                  onClick={() => setCustomerMode("existing")}
-                >
-                  기존 고객
-                </button>
-              </div>
-              {customerMode === "new" ? (
-                <label>
-                  고객명 *
-                  <input
-                    required
-                    value={customer}
-                    onChange={(e) => setCustomer(e.target.value)}
-                    placeholder="고객 이름 입력"
-                  />
-                </label>
-              ) : (
-                <div className="reservation-picker-field">
-                  <span>고객명 *</span>
-                  <button
-                    type="button"
-                    className="reservation-picker-button"
-                    aria-label="기존 고객 검색"
-                    onClick={() => setPicker("customer")}
-                  >
-                    <span>
-                      {selectedCustomer
-                        ? `${selectedCustomer.customer_name} · #${selectedCustomer.customer_id}`
-                        : "고객 검색 및 선택"}
-                    </span>
-                    <Search size={16} />
-                  </button>
-                </div>
-              )}
+              <label>
+                고객명 *
+                <input
+                  required
+                  value={customer}
+                  onChange={(e) => setCustomer(e.target.value)}
+                  placeholder="고객 이름 입력"
+                />
+              </label>
               <div className="reservation-field-pair">
                 <label>
                   입실일 *
@@ -415,6 +334,28 @@ export function NewReservation({
                     }}
                   />
                 </label>
+              </div>
+              <div className="reservation-room-summary">
+                <div className="reservation-room-input-heading">
+                  <strong>객실타입 · 객실수 *</strong>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => setRoomDetailsOpen(true)}
+                  >
+                    자세히
+                  </button>
+                </div>
+                <p>
+                  {rooms.length
+                    ? rooms
+                        .map(
+                          (r) =>
+                            `${roomTypes.find((t) => t.room_type_id === r.room_type_id)?.room_type_name ?? "객실"} ${r.count}실`,
+                        )
+                        .join(" · ")
+                    : "객실을 선택해 주세요."}
+                </p>
               </div>
               <div className="reservation-stay">
                 <CalendarDays size={16} />
@@ -469,17 +410,9 @@ export function NewReservation({
             <section className="reservation-card">
               <h3>
                 <BedDouble size={17} /> 객실 구성
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => setPicker("roomType")}
-                  disabled={!roomTypes.length}
-                >
-                  <Plus size={14} /> 객실 추가
-                </button>
               </h3>
               <p className="reservation-hint">
-                타입별로 호수를 배정하거나 미배정 상태로 예약할 수 있습니다.
+                객실타입과 객실수는 필수이며, 호수 배정 없이도 예약을 저장할 수 있습니다.
                 숙박일을 변경하면 호수 배정은 초기화됩니다.
               </p>
               {rooms.length ? (
@@ -510,44 +443,7 @@ export function NewReservation({
                             <td>
                               <strong>{typeName}</strong>
                             </td>
-                            <td>
-                              <div className="reservation-quantity">
-                                <button
-                                  type="button"
-                                  aria-label={`${typeName} 객실 수 감소`}
-                                  disabled={r.count <= 1}
-                                  onClick={() =>
-                                    setCount(r.room_type_id, r.count - 1)
-                                  }
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="100"
-                                  step="1"
-                                  aria-label={`${typeName} 객실 수`}
-                                  value={r.count}
-                                  onChange={(e) =>
-                                    setCount(
-                                      r.room_type_id,
-                                      Number(e.target.value),
-                                    )
-                                  }
-                                />
-                                <button
-                                  type="button"
-                                  aria-label={`${typeName} 객실 수 증가`}
-                                  disabled={totalCount >= 100}
-                                  onClick={() =>
-                                    setCount(r.room_type_id, r.count + 1)
-                                  }
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </td>
+                            <td>{r.count}실</td>
                             <td>
                               <button
                                 type="button"
@@ -567,15 +463,9 @@ export function NewReservation({
                                 {r.count})
                               </button>
                               <small className="reservation-rate-name">
-                                {r.room_ids
-                                  ?.filter(Boolean)
-                                  .map(
-                                    (id) =>
-                                      data.rooms.find(
-                                        (room) => room.room_id === id,
-                                      )?.room_number,
-                                  )
-                                  .join(", ") || "미배정"}
+                                {r.room_ids?.filter(Boolean).length
+                                  ? `${r.room_ids.filter(Boolean).length}실 배정 완료`
+                                  : "미배정"}
                               </small>
                             </td>
                             <td>
@@ -642,14 +532,15 @@ export function NewReservation({
                   <p>예약할 객실타입을 추가하세요.</p>
                   <span>
                     {roomTypes.length
-                      ? "같은 타입을 다시 선택하면 객실 수가 늘어납니다."
+                      ? "자세히에서 객실타입과 수량을 선택한 뒤 적용하세요."
                       : "이 프로퍼티에 등록된 객실타입이 없습니다."}
                   </span>
                 </div>
               )}
               {rooms.length > 0 && !allRatesKnown && (
                 <p className="reservation-hint">
-                  객실타입별 1박 요금을 입력하세요. 무료 객실은 0원을 입력하세요.
+                  객실타입별 1박 요금을 입력하세요. 무료 객실은 0원을
+                  입력하세요.
                 </p>
               )}
               {roomError && (
@@ -844,50 +735,6 @@ export function NewReservation({
                 </div>
               </dl>
             </section>
-            <details
-              className="reservation-card reservation-history"
-              open={customerMode === "existing" && !!customerId}
-            >
-              <summary>
-                고객의 기존 예약 <span>{related.length}건</span>
-              </summary>
-              {related.length ? (
-                <div className="reservation-table-wrap">
-                  <table className="reservation-input-table">
-                    <thead>
-                      <tr>
-                        <th>예약번호</th>
-                        <th>상태</th>
-                        <th>입실일</th>
-                        <th>퇴실일</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {related.map((r) => (
-                        <tr key={r.reservation_id}>
-                          <td>
-                            {data.refs.find(
-                              (ref) =>
-                                ref.reservation_id === r.reservation_id &&
-                                ref.ref_type === "INTERNAL",
-                            )?.ref_number ?? `#${r.reservation_id}`}
-                          </td>
-                          <td>{r.status}</td>
-                          <td>{r.check_in}</td>
-                          <td>{r.check_out}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="reservation-hint">
-                  {customerId && customerMode === "existing"
-                    ? "이 프로퍼티의 기존 예약 내역이 없습니다."
-                    : "기존 고객을 선택하면 예약 내역을 확인할 수 있습니다."}
-                </p>
-              )}
-            </details>
           </div>
         </div>
       </fieldset>
@@ -909,6 +756,14 @@ export function NewReservation({
           {busy ? "저장 중…" : saved ? "저장 완료" : "예약 저장"}
         </button>
       </footer>
+      {roomDetailsOpen && (
+        <RoomDetailsDialog
+          roomTypes={roomTypes}
+          rooms={rooms}
+          onApply={setRooms}
+          onClose={() => setRoomDetailsOpen(false)}
+        />
+      )}
       {assignmentKey !== null && (
         <RoomAssignmentDialog
           data={data}
@@ -932,51 +787,15 @@ export function NewReservation({
       )}
       {picker && (
         <ReservationSelectDialog
-          title={
-            picker === "partner"
-              ? "거래처 선택"
-              : picker === "customer"
-                ? "기존 고객 선택"
-                : "객실타입 선택"
-          }
-          searchLabel={
-            picker === "partner"
-              ? "거래처명 또는 타입 검색"
-              : picker === "customer"
-                ? "고객명 또는 고객번호 검색"
-                : "객실타입 검색"
-          }
-          selectedId={
-            picker === "partner"
-              ? partnerId
-              : picker === "customer"
-                ? customerId
-                : null
-          }
-          options={
-            picker === "partner"
-              ? data.partners.map((p) => ({
-                  id: p.partner_id,
-                  label: p.partner_name,
-                  detail: p.partner_type,
-                }))
-              : picker === "customer"
-                ? data.customers.map((c) => ({
-                    id: c.customer_id,
-                    label: c.customer_name,
-                    detail: `#${c.customer_id}`,
-                  }))
-                : roomTypes.map((t) => ({
-                    id: t.room_type_id,
-                    label: t.room_type_name,
-                    detail: `${rooms.find((r) => r.room_type_id === t.room_type_id)?.count ?? 0}실 선택됨`,
-                  }))
-          }
-          onSelect={(id) => {
-            if (picker === "partner") setPartnerId(id);
-            else if (picker === "customer") setCustomerId(id);
-            else addRoom(id);
-          }}
+          title="거래처 선택"
+          searchLabel="거래처명 또는 타입 검색"
+          selectedId={partnerId}
+          options={data.partners.map((p) => ({
+            id: p.partner_id,
+            label: p.partner_name,
+            detail: p.partner_type,
+          }))}
+          onSelect={setPartnerId}
           onClose={() => setPicker(null)}
         />
       )}

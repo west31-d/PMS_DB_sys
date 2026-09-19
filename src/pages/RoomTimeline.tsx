@@ -24,6 +24,7 @@ export function RoomTimeline({
   onDayChange,
   onSelect,
   onReservation,
+  onCheckOut,
 }: {
   data: Dataset;
   rows: ReservationRow[];
@@ -32,6 +33,7 @@ export function RoomTimeline({
   onDayChange: (day: string) => void;
   onSelect: (r: ReservationRow) => void;
   onReservation: () => void;
+  onCheckOut: () => void;
 }) {
   const [period, setPeriod] = useState("14"),
     [floor, setFloor] = useState(""),
@@ -150,6 +152,9 @@ export function RoomTimeline({
           onClick={onReservation}
         >
           예약
+        </button>
+        <button type="button" className="button" onClick={onCheckOut}>
+          퇴실
         </button>
       </div>
       <div className="timeline-filters">

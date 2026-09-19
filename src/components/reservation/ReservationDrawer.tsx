@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { X, BedDouble } from "lucide-react";
 import type { Dataset, ReservationRow } from "../../lib/types";
-import { stayStatus } from "../../lib/roomStatus";
-import { money } from "../../lib/domain";
+import { stayStatus, canCancelCheckIn, canCheckIn } from "../../lib/roomStatus";
+import { money, hotelDate } from "../../lib/domain";
 import { StatusBadge } from "../ui";
 export function ReservationDrawer({
   row,
@@ -39,30 +39,39 @@ export function ReservationDrawer({
     const timeout = window.setTimeout(onClose, reducedMotion ? 0 : 220);
     return () => window.clearTimeout(timeout);
   }, [closing, onClose]);
-  async function checkIn(id: number) {
+  async function checkIn(id: number, cancel = false) {
     if (!live || !supabase || pending.current || closing) return;
     pending.current = true;
     setBusy(id);
     setError("");
     setMessage("");
     try {
-      const result = await supabase.rpc("pms_check_in_room", {
-        p_reservation_room_id: id,
-      });
+      const result = await supabase.rpc(
+        cancel ? "pms_cancel_check_in_room" : "pms_check_in_room",
+        {
+          p_reservation_room_id: id,
+        },
+      );
       if (result.error) throw result.error;
-      setMessage("입실 처리되었습니다.");
+      setMessage(
+        cancel
+          ? "입실이 취소되었습니다. 예약 상태로 돌아갑니다."
+          : "입실 처리되었습니다.",
+      );
       try {
         await onUpdated();
       } catch {
         setError(
-          "입실은 처리되었지만 화면 갱신에 실패했습니다. 새로고침해 주세요.",
+          "처리는 완료되었지만 화면 갱신에 실패했습니다. 새로고침해 주세요.",
         );
       }
     } catch (e) {
       setError(
         e && typeof e === "object" && "message" in e
           ? String(e.message)
-          : "입실 처리에 실패했습니다.",
+          : cancel
+            ? "입실 취소에 실패했습니다."
+            : "입실 처리에 실패했습니다.",
       );
     } finally {
       pending.current = false;
@@ -147,6 +156,11 @@ export function ReservationDrawer({
               </p>
             )}
             {message && <p role="status">{message}</p>}
+            {(booking ?? row).check_in !== hotelDate() && (
+              <p className="muted">
+                입실 처리는 체크인 날짜 당일에만 가능합니다.
+              </p>
+            )}
             {!live && (
               <p className="muted">
                 입실 처리는 실제 DB 연결 모드에서 가능합니다.
@@ -154,53 +168,61 @@ export function ReservationDrawer({
             )}
             {data.reservationRooms
               .filter((x) => x.reservation_id === row.reservation_id)
-              .map((x) => (
-                <div className="detail-card" key={x.reservation_room_id}>
-                  <div className="detail-card-header">
-                    <strong>
-                      {data.rooms.find((r) => r.room_id === x.room_id)
-                        ?.room_number ?? "미배정"}{" "}
-                      <span className="muted">
-                        {
-                          data.roomTypes.find(
-                            (t) => t.room_type_id === x.room_type_id,
-                          )?.room_type_name
+              .map((x) => {
+                const cancel = canCancelCheckIn(x, booking ?? row, hotelDate());
+                return (
+                  <div className="detail-card" key={x.reservation_room_id}>
+                    <div className="detail-card-header">
+                      <strong>
+                        {data.rooms.find((r) => r.room_id === x.room_id)
+                          ?.room_number ?? "미배정"}{" "}
+                        <span className="muted">
+                          {
+                            data.roomTypes.find(
+                              (t) => t.room_type_id === x.room_type_id,
+                            )?.room_type_name
+                          }
+                        </span>
+                      </strong>
+                      <button
+                        type="button"
+                        className={cancel ? "button danger" : "button primary"}
+                        aria-label={`${data.rooms.find((r) => r.room_id === x.room_id)?.room_number ?? "미배정"}호 ${cancel ? "입실 취소" : "입실"}`}
+                        disabled={
+                          !live ||
+                          closing ||
+                          busy !== null ||
+                          !x.room_id ||
+                          (!cancel &&
+                            !canCheckIn(x, booking ?? row, hotelDate())) ||
+                          !["예약", "재실"].includes((booking ?? row).status)
                         }
-                      </span>
-                    </strong>
-                    <button
-                      type="button"
-                      className="button primary"
-                      aria-label={`${data.rooms.find((r) => r.room_id === x.room_id)?.room_number ?? "미배정"}호 입실`}
-                      disabled={
-                        !live ||
-                        closing ||
-                        busy !== null ||
-                        !x.room_id ||
-                        stayStatus(x, booking ?? row) !== "예약" ||
-                        !["예약", "재실"].includes((booking ?? row).status)
-                      }
-                      onClick={() => checkIn(x.reservation_room_id)}
-                    >
-                      {busy === x.reservation_room_id
-                        ? "입실 처리 중…"
-                        : stayStatus(x, booking ?? row) === "재실"
-                          ? "입실 완료"
-                          : !x.room_id
-                            ? "호수 배정 필요"
-                            : "입실"}
-                    </button>
+                        onClick={() => checkIn(x.reservation_room_id, cancel)}
+                      >
+                        {busy === x.reservation_room_id
+                          ? cancel
+                            ? "입실 취소 중…"
+                            : "입실 처리 중…"
+                          : cancel
+                            ? "입실 취소"
+                            : stayStatus(x, booking ?? row) === "재실"
+                              ? "입실 완료"
+                              : !x.room_id
+                                ? "호수 배정 필요"
+                                : "입실"}
+                      </button>
+                    </div>
+                    <dl className="detail-grid">
+                      <dt>입실 상태</dt>
+                      <dd>{stayStatus(x, booking ?? row)}</dd>
+                      <dt>요금 타입</dt>
+                      <dd>연결 준비 중</dd>
+                      <dt>객실 요금</dt>
+                      <dd>{money(Number(x.rate_amount))}</dd>
+                    </dl>
                   </div>
-                  <dl className="detail-grid">
-                    <dt>입실 상태</dt>
-                    <dd>{stayStatus(x, booking ?? row)}</dd>
-                    <dt>요금 타입</dt>
-                    <dd>연결 준비 중</dd>
-                    <dt>객실 요금</dt>
-                    <dd>{money(Number(x.rate_amount))}</dd>
-                  </dl>
-                </div>
-              ))}
+                );
+              })}
             <h3>부대 이용내역 · Folio</h3>
             {data.charges
               .filter((x) => x.reservation_id === row.reservation_id)

@@ -24,12 +24,18 @@ export function CheckedIn({
   propertyId,
   live,
   active,
+  mode = "check_in",
 }: {
   data: Dataset;
   propertyId: number;
   live: boolean;
   active: boolean;
+  mode?: "check_in" | "check_out" | "arrivals";
 }) {
+  const label = mode === "check_out" ? "퇴실" : "입실";
+  const roomState = mode === "check_out" ? "퇴실" : mode === "arrivals" ? "예약" : "재실";
+  const title = mode === "arrivals" ? "입실 예정" : `실 ${label}`;
+  const dateField = mode === "check_out" ? "check_out" : "check_in";
   const [draft, setDraft] = useState(() => defaultCheckInFilters(hotelDate()));
   const [applied, setApplied] = useState(draft),
     [revision, setRevision] = useState(0),
@@ -49,7 +55,7 @@ export function CheckedIn({
       return;
     }
     setLoading(true);
-    loadDataset({ propertyId, from: applied.from, to: applied.to })
+    loadDataset({ propertyId, from: applied.from, to: applied.to, dateField })
       .then((next) => {
         if (active) setResult(next);
       })
@@ -63,13 +69,13 @@ export function CheckedIn({
     return () => {
       active = false;
     };
-  }, [data, propertyId, live, applied, revision]);
+  }, [data, propertyId, live, applied, revision, dateField]);
   useEffect(() => {
     if (!active) setSelected(null);
   }, [active]);
   const rows = useMemo(
-    () => checkInReport(result, propertyId, applied),
-    [result, propertyId, applied],
+    () => checkInReport(result, propertyId, applied, mode),
+    [result, propertyId, applied, mode],
   );
   const pages = Math.max(1, Math.ceil(rows.length / 20)),
     current = Math.min(page, pages);
@@ -91,7 +97,7 @@ export function CheckedIn({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = "실입실목록_" + applied.from + "_" + applied.to + ".csv";
+    link.download = `${title}목록_${applied.from}_${applied.to}.csv`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -102,7 +108,7 @@ export function CheckedIn({
         onSubmit={(e) => {
           e.preventDefault();
           if (!draft.from || !draft.to || draft.from > draft.to) {
-            setValidation("입실 시작일은 종료일보다 늦을 수 없습니다.");
+            setValidation(`${label} 시작일은 종료일보다 늦을 수 없습니다.`);
             return;
           }
           setValidation("");
@@ -127,11 +133,11 @@ export function CheckedIn({
         </label>
         <fieldset>
           <legend>
-            입실일자 <span>*</span>
+            {mode === "arrivals" ? "체크인 날짜" : mode === "check_out" ? "퇴실날짜" : "입실일자"} <span>*</span>
           </legend>
           <div className="checkin-date-range">
             <input
-              aria-label="입실 시작일"
+              aria-label={`${label} 시작일`}
               type="date"
               required
               value={draft.from}
@@ -139,7 +145,7 @@ export function CheckedIn({
             />
             <span>~</span>
             <input
-              aria-label="입실 종료일"
+              aria-label={`${label} 종료일`}
               type="date"
               required
               value={draft.to}
@@ -203,7 +209,7 @@ export function CheckedIn({
         </label>
         <div className="checkin-status">
           <span>객실 상태</span>
-          <StatusBadge status="재실" />
+          <StatusBadge status={roomState} />
         </div>
 
         {validation && (
@@ -227,10 +233,10 @@ export function CheckedIn({
           </button>
         </div>
       </form>
-      <section className="checkin-results" aria-label="실 입실 조회 결과">
+      <section className="checkin-results" aria-label={`${title} 조회 결과`}>
         <div className="checkin-result-toolbar">
           <div>
-            <strong>실 입실 현황</strong>
+            <strong>{title} 현황</strong>
             <span>
               {applied.from} ~ {applied.to}
             </span>
@@ -246,11 +252,11 @@ export function CheckedIn({
         </div>
         {loading ? (
           <div className="loading" role="status">
-            조건에 맞는 실 입실 목록을 조회 중입니다…
+            조건에 맞는 {title} 목록을 조회 중입니다…
           </div>
         ) : error ? (
           <div className="error-panel" role="alert">
-            <strong>실 입실 목록을 조회하지 못했습니다</strong>
+            <strong>{title} 목록을 조회하지 못했습니다</strong>
             <p>{error}</p>
             <button
               className="button"
@@ -262,6 +268,7 @@ export function CheckedIn({
         ) : (
           <>
             <div className="checkin-summary">
+              {mode === "check_out" && <small>체크아웃 날짜 기준 · 퇴실 객실이 있는 예약 · 금액과 상태는 예약 전체 기준</small>}
               <span>
                 조회 <strong>{rows.length}</strong>건
               </span>
@@ -287,7 +294,7 @@ export function CheckedIn({
                       "합계",
                       "거래처명",
                       "요금타입",
-                      "상태",
+                      "예약 상태",
                     ].map((h) => (
                       <th key={h}>{h}</th>
                     ))}
@@ -337,8 +344,8 @@ export function CheckedIn({
             </div>
             {!rows.length && (
               <EmptyState
-                title="조건에 맞는 실 입실 내역이 없습니다"
-                description="선택한 입실일 범위에 해당하고 예약 객실별 숙박 상태가 재실인 예약만 표시합니다."
+                title={`조건에 맞는 ${title} 내역이 없습니다`}
+                description={`선택한 ${label}일 범위에 해당하고 예약 객실별 숙박 상태가 ${roomState}인 예약만 표시합니다.`}
               />
             )}
             <div className="pagination">
@@ -376,6 +383,7 @@ export function CheckedIn({
               propertyId,
               from: applied.from,
               to: applied.to,
+              dateField,
             }),
           )
         }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePopupClose } from "../../lib/usePopupClose";
 import { Search, X } from "lucide-react";
 
 export interface ReservationOption {
@@ -13,7 +14,7 @@ export function ReservationSelectDialog({
   options,
   selectedId,
   onSelect,
-  onClose,
+  onClose: onClosed,
 }: {
   title: string;
   searchLabel: string;
@@ -23,6 +24,7 @@ export function ReservationSelectDialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const onClose = usePopupClose(ref, onClosed);
   const searchRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   useEffect(() => {

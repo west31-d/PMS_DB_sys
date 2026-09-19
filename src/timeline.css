@@ -98,8 +98,7 @@
   padding: 6px 9px;
 }
 .timeline-scroll {
-  overflow: auto;
-  max-height: calc(100vh - 340px);
+  overflow-x: auto;
   min-height: 240px;
   border-top: 1px solid #d6dfea;
   scrollbar-color: #bac7d9 #f5f7fa;
@@ -380,9 +379,6 @@
   }
   .timeline-filter-inputs .filter-search {
     width: 100%;
-  }
-  .timeline-scroll {
-    max-height: 65vh;
   }
   .timeline-caption > span:last-child {
     line-height: 1.8;
